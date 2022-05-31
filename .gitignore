@@ -2,3 +2,4 @@ fig*/
 .ipynb_checkpoints/
 __pycache__/
 *.html
+*.pkl
