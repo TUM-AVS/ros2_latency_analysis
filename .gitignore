@@ -1,0 +1,3 @@
+*.o
+dep-check
+cmake-build-debug/

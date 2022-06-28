@@ -1,14 +1,14 @@
 // Declares llvm::cl::extrahelp.
-#include "llvm/Support/CommandLine.h"
+#include <llvm/Support/CommandLine.h>
 
 // Declares clang::SyntaxOnlyAction.
-#include "clang/Frontend/FrontendActions.h"
+#include <clang/Frontend/FrontendActions.h>
 
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
+#include <clang/Tooling/CommonOptionsParser.h>
+#include <clang/Tooling/Tooling.h>
 
-#include "clang/ASTMatchers/ASTMatchers.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include <clang/ASTMatchers/ASTMatchers.h>
+#include <clang/ASTMatchers/ASTMatchFinder.h>
 
 #include "MemberRefCollector.hh"
 
