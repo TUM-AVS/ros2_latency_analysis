@@ -32,7 +32,12 @@ static llvm::cl::OptionCategory ROS2ToolCategory("ros2-tool options");
 static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 
 // A help message for this specific tool can be added afterwards.
-static cl::extrahelp MoreHelp("\nMore help text...\n");
+static cl::extrahelp MoreHelp(
+        "\nThis tool extracts:\n"
+        "* ROS 2 nodes and their member fields and methods\n"
+        "* member references from ROS 2 subscription and timer callbacks\n"
+        "* metadata (source ranges, qualified names, value types, etc.)"
+);
 
 int main(int argc, const char **argv) {
     auto ExpectedParser = CommonOptionsParser::create(argc, argv, ROS2ToolCategory);
@@ -71,6 +76,6 @@ int main(int argc, const char **argv) {
     // We get a segfault on exit, so make sure the reader is closed at least...
     // (Yes, this hurts as much to write as it does to read :c )
     Writer.~DataWriter();
-    std::cout << '[' << ExitStatus << ']' << "Done, outputs written." << std::endl;
+    std::cout << '[' << ExitStatus << ']' << " Done, outputs written." << std::endl;
     return ExitStatus;
 }
