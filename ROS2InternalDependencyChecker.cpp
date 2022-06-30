@@ -10,12 +10,17 @@
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 
-#include "MemberRefCollector.hh"
+#include "CreateSubHandler.h"
+#include "CreateTmrHandler.h"
+#include "CreatePubHandler.h"
+#include "NodeDeclHandler.h"
+#include "DataWriter.h"
 
 using namespace llvm;
 using namespace clang;
 using namespace clang::tooling;
 using namespace clang::ast_matchers;
+using namespace schmeller::ROS2DepCheck;
 
 // Apply a custom category to all command-line options so that they are the
 // only ones displayed.
@@ -30,23 +35,42 @@ static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static cl::extrahelp MoreHelp("\nMore help text...\n");
 
 int main(int argc, const char **argv) {
-  auto ExpectedParser = CommonOptionsParser::create(argc, argv, ROS2ToolCategory);
-  if (!ExpectedParser) {
-    // Fail gracefully for unsupported options.
-    llvm::errs() << ExpectedParser.takeError();
-    return 1;
-  }
-  CommonOptionsParser& OptionsParser = ExpectedParser.get();
-  ClangTool Tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
+    auto ExpectedParser = CommonOptionsParser::create(argc, argv, ROS2ToolCategory);
+    if (!ExpectedParser) {
+        // Fail gracefully for unsupported options.
+        llvm::errs() << ExpectedParser.takeError();
+        return 1;
+    }
+    CommonOptionsParser &OptionsParser = ExpectedParser.get();
+    ClangTool Tool(OptionsParser.getCompilations(),
+                   OptionsParser.getSourcePathList());
 
-  StatementMatcher CreateSubMatcher = callExpr(callee(functionDecl(hasName("create_subscription")))).bind("create_sub_call");
-  StatementMatcher CreateTmrMatcher = callExpr(callee(functionDecl(hasName("create_timer")))).bind("create_tmr_call");
-  StatementMatcher CreatePubMatcher = callExpr(callee(functionDecl(hasName("create_publisher")))).bind("create_pub_call");
+    StatementMatcher CreateSubMatcher = callExpr(callee(functionDecl(hasName("create_subscription"))))
+            .bind("create_sub_call");
+    StatementMatcher CreateTmrMatcher = callExpr(callee(functionDecl(hasName("create_timer"))))
+            .bind("create_tmr_call");
+    StatementMatcher CreatePubMatcher = callExpr(callee(functionDecl(hasName("create_publisher"))))
+            .bind("create_pub_call");
+    DeclarationMatcher NodeDeclMatcher = cxxRecordDecl(hasAnyBase(hasType(cxxRecordDecl(hasName("rclcpp::Node")))))
+            .bind("node_decl");
 
-  MemberRefCollector Collector;
-  MatchFinder Finder;
-  Finder.addMatcher(CreateSubMatcher, &Collector);
+    DataWriter Writer("node.yml");
 
-  return Tool.run(newFrontendActionFactory(&Finder).get());
+    CreateSubHandler SubHandler(&Writer);
+    CreateTmrHandler TmrHandler(&Writer);
+    CreatePubHandler PubHandler(&Writer);
+    NodeDeclHandler NodeHandler(&Writer);
+    MatchFinder Finder;
+    Finder.addMatcher(CreateSubMatcher, &SubHandler);
+    Finder.addMatcher(CreateTmrMatcher, &TmrHandler);
+    Finder.addMatcher(CreatePubMatcher, &PubHandler);
+    Finder.addMatcher(NodeDeclMatcher, &NodeHandler);
+
+    auto ExitStatus = Tool.run(newFrontendActionFactory(&Finder).get());
+
+    // We get a segfault on exit, so make sure the reader is closed at least...
+    // (Yes, this hurts as much to write as it does to read :c )
+    Writer.~DataWriter();
+    std::cout << '[' << ExitStatus << ']' << "Done, outputs written." << std::endl;
+    return ExitStatus;
 }
