@@ -7,14 +7,12 @@
 #include <clang/Tooling/CommonOptionsParser.h>
 #include <clang/Tooling/Tooling.h>
 
-#include <clang/ASTMatchers/ASTMatchers.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 
-#include "CreateSubHandler.h"
-#include "CreateTmrHandler.h"
-#include "CreatePubHandler.h"
-#include "NodeDeclHandler.h"
+#include "CompoundHandler.h"
 #include "DataWriter.h"
+#include "Matchers.h"
+#include "MemberExprHandler.h"
 
 using namespace llvm;
 using namespace clang;
@@ -32,50 +30,62 @@ static llvm::cl::OptionCategory ROS2ToolCategory("ros2-tool options");
 static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 
 // A help message for this specific tool can be added afterwards.
-static cl::extrahelp MoreHelp(
-        "\nThis tool extracts:\n"
-        "* ROS 2 nodes and their member fields and methods\n"
-        "* member references from ROS 2 subscription and timer callbacks\n"
-        "* metadata (source ranges, qualified names, value types, etc.)"
-);
+static cl::extrahelp
+    MoreHelp("\nThis tool extracts:\n"
+             "* ROS 2 nodes and their member fields and methods\n"
+             "* member references from ROS 2 subscription and timer callbacks\n"
+             "* metadata (source ranges, qualified names, value types, etc.)");
 
 int main(int argc, const char **argv) {
-    auto ExpectedParser = CommonOptionsParser::create(argc, argv, ROS2ToolCategory);
-    if (!ExpectedParser) {
-        // Fail gracefully for unsupported options.
-        llvm::errs() << ExpectedParser.takeError();
-        return 1;
-    }
-    CommonOptionsParser &OptionsParser = ExpectedParser.get();
-    ClangTool Tool(OptionsParser.getCompilations(),
-                   OptionsParser.getSourcePathList());
+  auto ExpectedParser =
+      CommonOptionsParser::create(argc, argv, ROS2ToolCategory);
+  if (!ExpectedParser) {
+    // Fail gracefully for unsupported options.
+    llvm::errs() << ExpectedParser.takeError();
+    return 1;
+  }
+  CommonOptionsParser &OptionsParser = ExpectedParser.get();
+  ClangTool Tool(OptionsParser.getCompilations(),
+                 OptionsParser.getSourcePathList());
 
-    StatementMatcher CreateSubMatcher = callExpr(callee(functionDecl(hasName("create_subscription"))))
-            .bind("create_sub_call");
-    StatementMatcher CreateTmrMatcher = callExpr(callee(functionDecl(hasName("create_timer"))))
-            .bind("create_tmr_call");
-    StatementMatcher CreatePubMatcher = callExpr(callee(functionDecl(hasName("create_publisher"))))
-            .bind("create_pub_call");
-    DeclarationMatcher NodeDeclMatcher = cxxRecordDecl(hasAnyBase(hasType(cxxRecordDecl(hasName("rclcpp::Node")))))
-            .bind("node_decl");
+  DataWriter Writer;
 
-    DataWriter Writer("node.yml");
+  MemberExprHandler RawMemberHandler(&Writer, false);
+  MemberExprHandler CtxMemberHandler(&Writer, true);
+  MatchFinder Finder;
 
-    CreateSubHandler SubHandler(&Writer);
-    CreateTmrHandler TmrHandler(&Writer);
-    CreatePubHandler PubHandler(&Writer);
-    NodeDeclHandler NodeHandler(&Writer);
-    MatchFinder Finder;
-    Finder.addMatcher(CreateSubMatcher, &SubHandler);
-    Finder.addMatcher(CreateTmrMatcher, &TmrHandler);
-    Finder.addMatcher(CreatePubMatcher, &PubHandler);
-    Finder.addMatcher(NodeDeclMatcher, &NodeHandler);
+  auto addMatcher = [&Finder](auto Matcher, auto Handler) {
+    Finder.addMatcher(traverse(clang::TK_IgnoreUnlessSpelledInSource, Matcher),
+                      Handler);
+  };
 
-    auto ExitStatus = Tool.run(newFrontendActionFactory(&Finder).get());
+  addMatcher(Matchers::ChainedMemberMatcher, &RawMemberHandler);
+  addMatcher(Matchers::MemberIsLHSMatcher, &CtxMemberHandler);
+  addMatcher(Matchers::MemberIsRHSMatcher, &CtxMemberHandler);
+  addMatcher(Matchers::MemberInDeclMatcher, &CtxMemberHandler);
+  addMatcher(Matchers::MemberIsCalleeMatcher, &CtxMemberHandler);
+  addMatcher(Matchers::MemberIsCallArgMatcher, &CtxMemberHandler);
+  addMatcher(Matchers::AnyPublishCallMatcher, &CtxMemberHandler);
+  addMatcher(Matchers::MemberPublishCallMatcher, &CtxMemberHandler);
 
-    // We get a segfault on exit, so make sure the reader is closed at least...
-    // (Yes, this hurts as much to write as it does to read :c )
-    Writer.~DataWriter();
-    std::cout << '[' << ExitStatus << ']' << " Done, outputs written." << std::endl;
-    return ExitStatus;
+  // addMatcher(Matchers::FuncContainingPubCallMatcher, &MemberHandler);
+  // addMatcher(Matchers::CallbackFuncMatcher, &MemberHandler);
+  // addMatcher(Matchers::CallbackLambdaMatcher, &MemberHandler);
+  // addMatcher(Matchers::CallbackRegistrationMatcher, &MemberHandler);
+
+  int ExitStatus = Tool.run(newFrontendActionFactory(&Finder).get());
+
+  const char *SourceFilename = OptionsParser.getSourcePathList()[0].c_str();
+  char *SourceFilenameMutable = (char *)malloc(strlen(SourceFilename) + 1);
+  strcpy(SourceFilenameMutable, SourceFilename);
+
+  for (int i = 0; i < strlen(SourceFilenameMutable) + 1; ++i) {
+    if (SourceFilenameMutable[i] == '/')
+      SourceFilenameMutable[i] = '-';
+  }
+
+  Writer.write(SourceFilenameMutable);
+  std::cout << '[' << ExitStatus << ']' << " Done, outputs written."
+            << std::endl;
+  return ExitStatus;
 }

@@ -7,6 +7,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <nlohmann/json.hpp>
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 
@@ -14,21 +16,23 @@
 
 using namespace clang;
 using namespace clang::ast_matchers;
+using namespace nlohmann;
 using namespace schmeller::ROS2DepCheck;
 
 namespace schmeller::ROS2DepCheck {
     class DataWriter {
     public:
-        DataWriter(std::string Filename) : OutStream(Filename) {};
-        ~DataWriter() { OutStream.close(); };
+        json nodeToJson(const CXXRecordDecl *Decl, const MatchFinder::MatchResult &Result);
+        json functionDeclToJson(const FunctionDecl *Decl, const MatchFinder::MatchResult &Result);
+        json memberChainToJson(const std::vector<MemberExpr *> &MemberChain, const MatchFinder::MatchResult &Result);
+        json memberToJson(const MemberExpr *Member, const MatchFinder::MatchResult &Result);
+        json sourceRangeToJson(const SourceRange &Range, const MatchFinder::MatchResult &Result);
 
-        void writeNode(const CXXRecordDecl *Decl, const MatchFinder::MatchResult &Result);
-        void writeFunction(const FunctionDecl *Decl, const MatchFinder::MatchResult &Result);
-        void writeLambda(const LambdaExpr *Decl, const MatchFinder::MatchResult &Result);
+        void addAtPath(const char *Path, const json &Node);
+
+        void write(const char *Filename);
     private:
-        std::ofstream OutStream;
-
-        std::string lvl(int Level);
+        json Json;
     };
 } // namespace schmeller::ROS2DepCheck
 
