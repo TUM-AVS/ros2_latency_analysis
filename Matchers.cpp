@@ -45,9 +45,10 @@ StatementMatcher MemberIsCalleeMatcher =
     callExpr(callee(ChainedMemberMatcher)).bind(CallToMember);
 
 // Matches ROS node members that are arguments to function calls
-// TODO: matches CXX operators like ->, =, !=
 StatementMatcher MemberIsCallArgMatcher =
-    callExpr(hasAnyArgument(ChainedMemberMatcher)).bind(CallWithMemberAsArg);
+    callExpr(hasAnyArgument(ChainedMemberMatcher),
+             unless(cxxOperatorCallExpr()))
+        .bind(CallWithMemberAsArg);
 
 StatementMatcher AnyPublishCallMatcher =
     cxxMemberCallExpr(callee(functionDecl(hasName("publish"))))
