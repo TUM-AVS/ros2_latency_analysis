@@ -6,9 +6,19 @@
 
 json schmeller::ROS2DepCheck::DataWriter::functionDeclToJson(
     const FunctionDecl *Decl, const MatchFinder::MatchResult &Result) {
-  return {{"id", Decl->getID()},
-          {"qualified_name", Decl->getQualifiedNameAsString()},
-          {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)}};
+  json J = {{"id", Decl->getID()},
+            {"qualified_name", Decl->getQualifiedNameAsString()},
+            {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)},
+            {"signature",
+             {{"return_type", Decl->getReturnType().getCanonicalType().getAsString()},
+              {"parameter_types", json::array()}}}};
+
+  json *ParamTypes = &(J["signature"]["parameter_types"]);
+  for (auto *Param : Decl->parameters()) {
+    ParamTypes->push_back(Param->getType().getCanonicalType().getAsString());
+  }
+
+  return J;
 }
 
 json schmeller::ROS2DepCheck::DataWriter::nodeToJson(
