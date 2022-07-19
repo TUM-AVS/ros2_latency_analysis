@@ -4,14 +4,16 @@
 
 #include "DataWriter.h"
 
-json schmeller::ROS2DepCheck::DataWriter::functionDeclToJson(
-    const FunctionDecl *Decl, const MatchFinder::MatchResult &Result) {
-  json J = {{"id", Decl->getID()},
-            {"qualified_name", Decl->getQualifiedNameAsString()},
-            {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)},
-            {"signature",
-             {{"return_type", Decl->getReturnType().getCanonicalType().getAsString()},
-              {"parameter_types", json::array()}}}};
+namespace schmeller::ROS2DepCheck {
+json DataWriter::functionDeclToJson(const FunctionDecl *Decl,
+                                    const MatchFinder::MatchResult &Result) {
+  json J = {
+      {"id", Decl->getID()},
+      {"qualified_name", Decl->getQualifiedNameAsString()},
+      {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)},
+      {"signature",
+       {{"return_type", Decl->getReturnType().getCanonicalType().getAsString()},
+        {"parameter_types", json::array()}}}};
 
   json *ParamTypes = &(J["signature"]["parameter_types"]);
   for (auto *Param : Decl->parameters()) {
@@ -21,8 +23,8 @@ json schmeller::ROS2DepCheck::DataWriter::functionDeclToJson(
   return J;
 }
 
-json schmeller::ROS2DepCheck::DataWriter::nodeToJson(
-    const CXXRecordDecl *Decl, const MatchFinder::MatchResult &Result) {
+json DataWriter::nodeToJson(const CXXRecordDecl *Decl,
+                            const MatchFinder::MatchResult &Result) {
   json J = {{"id", Decl->getID()},
             {"qualified_name", Decl->getQualifiedNameAsString()},
             {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)},
@@ -81,8 +83,25 @@ void DataWriter::write(const char *Filename) {
 }
 
 void DataWriter::addAtPath(const char *Path, const json &Node) {
-  if (!Json.contains(Path))
-    Json[Path] = json::array();
+  std::vector<std::string> PathSegments;
+  std::stringstream PathStream(Path);
+  std::string PathSegment;
 
-  Json[Path].push_back(Node);
+  while (std::getline(PathStream, PathSegment, '/'))
+    PathSegments.push_back(PathSegment);
+
+  json *JsonRef = &Json;
+  for (auto It = PathSegments.begin(); It != PathSegments.end(); ++It) {
+    if (!JsonRef->contains(Path)) {
+      if (It + 1 == PathSegments.end())
+        (*JsonRef)[*It] = json::array(); // Last node in path is array
+      else
+        (*JsonRef)[*It] = json::object(); // All other nodes are objects
+    }
+
+    JsonRef = &((*JsonRef)[*It]);
+  }
+
+  JsonRef->push_back(Node);
 }
+} // namespace schmeller::ROS2DepCheck

@@ -90,7 +90,8 @@ void schmeller::ROS2DepCheck::MemberExprHandler::run(
    * Write JSON
    *********************************************/
 
-  Writer->addAtPath(CStr.c_str(), J);
+  std::string JsonPath = (std::stringstream() << "accesses/" << CStr).str();
+  Writer->addAtPath(JsonPath.c_str(), J);
 }
 
 std::vector<MemberExpr *>
@@ -137,7 +138,7 @@ void schmeller::ROS2DepCheck::MemberExprHandler::getContextOf(
   std::transform(CBinds.begin(), CBinds.end(), std::back_inserter(CNodes),
                  [&Result](const char *Bind) {
                    if (Result.Nodes.getMap().count(Bind)) {
-                       return &Result.Nodes.getMap().at(Bind);
+                     return &Result.Nodes.getMap().at(Bind);
                    }
                    return (const DynTypedNode *)NULL;
                  });

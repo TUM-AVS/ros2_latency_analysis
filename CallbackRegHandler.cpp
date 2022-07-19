@@ -30,7 +30,7 @@ void CallbackRegHandler::run(const MatchFinder::MatchResult &Result) {
    *********************************************/
 
   const std::string CreateCallName = Call->getDirectCallee()->getNameAsString();
-  const char *JsonPath;
+  std::string JsonPath;
 
   if (CreateCallName == "create_publisher") {
     OutJson["type"] = "publisher";
@@ -123,6 +123,6 @@ void CallbackRegHandler::run(const MatchFinder::MatchResult &Result) {
     OutJson["member"] = Writer->memberToJson(MemberRef, Result);
   }
 
-  Writer->addAtPath(JsonPath, OutJson);
+  Writer->addAtPath(JsonPath.c_str(), OutJson);
 }
 } // namespace schmeller::ROS2DepCheck
