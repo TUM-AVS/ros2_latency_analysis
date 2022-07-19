@@ -4,83 +4,75 @@
 
 #include "DataWriter.h"
 
+json schmeller::ROS2DepCheck::DataWriter::functionDeclToJson(
+    const FunctionDecl *Decl, const MatchFinder::MatchResult &Result) {
+  return {{"id", Decl->getID()},
+          {"qualified_name", Decl->getQualifiedNameAsString()},
+          {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)}};
+}
 
-json schmeller::ROS2DepCheck::DataWriter::functionDeclToJson(const FunctionDecl *Decl,
-                                                             const MatchFinder::MatchResult &Result) {
-    return {
-            {"id",             Decl->getID()},
+json schmeller::ROS2DepCheck::DataWriter::nodeToJson(
+    const CXXRecordDecl *Decl, const MatchFinder::MatchResult &Result) {
+  json J = {{"id", Decl->getID()},
             {"qualified_name", Decl->getQualifiedNameAsString()},
-            {"source_range",   sourceRangeToJson(Decl->getSourceRange(), Result)}
-    };
+            {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)},
+            {"fields", json::array()},
+            {"methods", json::array()}};
+
+  for (const auto *Field : Decl->fields()) {
+    J["fields"].push_back(
+        {{"id", Field->getID()},
+         {"qualified_name", Field->getQualifiedNameAsString()},
+         {"source_range", sourceRangeToJson(Field->getSourceRange(), Result)}});
+  }
+
+  for (const auto *Method : Decl->methods()) {
+    J["methods"].push_back(
+        {{"id", Method->getID()},
+         {"qualified_name", Method->getQualifiedNameAsString()},
+         {"source_range",
+          sourceRangeToJson(Method->getSourceRange(), Result)}});
+  }
+
+  return J;
 }
 
-json
-schmeller::ROS2DepCheck::DataWriter::nodeToJson(const CXXRecordDecl *Decl, const MatchFinder::MatchResult &Result) {
-    json J = {
-            {"id",             Decl->getID()},
-            {"qualified_name", Decl->getQualifiedNameAsString()},
-            {"source_range",   sourceRangeToJson(Decl->getSourceRange(), Result)},
-            {"fields",         json::array()},
-            {"methods",        json::array()}
-    };
+json DataWriter::memberChainToJson(const std::vector<MemberExpr *> &MemberChain,
+                                   const MatchFinder::MatchResult &Result) {
+  json J = json::array();
+  for (const MemberExpr *M : MemberChain) {
+    J.push_back(memberToJson(M, Result));
+  }
 
-    for (const auto *Field: Decl->fields()) {
-        J["fields"].push_back({
-                                      {"id",             Field->getID()},
-                                      {"qualified_name", Field->getQualifiedNameAsString()},
-                                      {"source_range",   sourceRangeToJson(Field->getSourceRange(), Result)}
-                              });
-    }
-
-    for (const auto *Method: Decl->methods()) {
-        J["methods"].push_back({
-                                       {"id",             Method->getID()},
-                                       {"qualified_name", Method->getQualifiedNameAsString()},
-                                       {"source_range",   sourceRangeToJson(Method->getSourceRange(), Result)}
-                               });
-    }
-
-    return J;
+  return J;
 }
 
-json
-DataWriter::memberChainToJson(const std::vector<MemberExpr *> &MemberChain, const MatchFinder::MatchResult &Result) {
-    json J = json::array();
-    for (const MemberExpr *M: MemberChain) {
-        J.push_back(memberToJson(M, Result));
-    }
-
-    return J;
+json DataWriter::memberToJson(const MemberExpr *Member,
+                              const MatchFinder::MatchResult &Result) {
+  return {
+      {"id", Member->getMemberDecl()->getID()},
+      {"qualified_name", Member->getMemberDecl()->getQualifiedNameAsString()},
+      {"source_range", sourceRangeToJson(Member->getSourceRange(), Result)},
+      {"name", Member->getMemberNameInfo().getAsString()}};
 }
 
-json DataWriter::memberToJson(const MemberExpr *Member, const MatchFinder::MatchResult &Result) {
-    return {
-            {"id",             Member->getMemberDecl()->getID()},
-            {"qualified_name", Member->getMemberDecl()->getQualifiedNameAsString()},
-            {"source_range",   sourceRangeToJson(Member->getSourceRange(), Result)},
-            {"name",           Member->getMemberNameInfo().getAsString()}
-    };
-}
-
-json DataWriter::sourceRangeToJson(const SourceRange &Range, const MatchFinder::MatchResult &Result) {
-    return {
-            {"begin", Range.getBegin().printToString(*Result.SourceManager)},
-            {"end",   Range.getEnd().printToString(*Result.SourceManager)}
-    };
+json DataWriter::sourceRangeToJson(const SourceRange &Range,
+                                   const MatchFinder::MatchResult &Result) {
+  return {{"begin", Range.getBegin().printToString(*Result.SourceManager)},
+          {"end", Range.getEnd().printToString(*Result.SourceManager)}};
 }
 
 void DataWriter::write(const char *Filename) {
-  std::cout << Filename << std::endl;
-    std::ofstream OutStream(Filename);
-    OutStream << std::setw(4) << Json << std::endl;
-    OutStream.close();
+  std::ofstream OutStream(Filename);
+  OutStream << std::setw(4) << Json << std::endl;
+  OutStream.close();
 
-    Json = {};
+  Json = {};
 }
 
 void DataWriter::addAtPath(const char *Path, const json &Node) {
-    if (!Json.contains(Path))
-        Json[Path] = json::array();
+  if (!Json.contains(Path))
+    Json[Path] = json::array();
 
-    Json[Path].push_back(Node);
+  Json[Path].push_back(Node);
 }

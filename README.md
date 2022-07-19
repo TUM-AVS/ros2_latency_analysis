@@ -22,7 +22,7 @@ If the type of access cannot be determined, the user is prompted to categorize t
 Install the following dependencies:
 ```shell
 sudo apt-get update
-sudo apt-get install llvm clang libclang-dev
+sudo apt-get install clang-12 libclang1-12 libclang-12-dev libclang-cpp12-dev libclang-cpp12
 ```
 
 The project can then be build by executing:

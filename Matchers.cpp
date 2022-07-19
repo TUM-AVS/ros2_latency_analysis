@@ -60,7 +60,8 @@ StatementMatcher AnyPublishCallMatcher =
 StatementMatcher MemberPublishCallMatcher =
     memberExpr(
         hasDeclaration(fieldDecl(hasAncestor(NodeDeclMatcher)).bind("decl")),
-        hasAncestor(AnyPublishCallMatcher), hasAncestor(MethodBodyMatcher))
+        hasAncestor(AnyPublishCallMatcher),
+        optionally(hasAncestor(MethodBodyMatcher)))
         .bind(MemberReference);
 
 // Matches all functions containing a call to publish of a ROS node
@@ -72,8 +73,8 @@ StatementMatcher CallbackFuncMatcher =
     callExpr(callee(functionDecl(anyOf(hasName("create_timer"),
                                        hasName("create_subscription")))),
              optionally(hasArgument(0, stringLiteral().bind("topic_name"))),
-             hasAnyArgument(hasDescendant(declRefExpr(hasDeclaration(
-                 functionDecl(hasAncestor(MethodBodyMatcher)).bind("decl"))))))
+             hasDescendant(declRefExpr(hasDeclaration(
+                 functionDecl(hasAncestor(NodeDeclMatcher)).bind("decl")))))
         .bind("call");
 
 // Matches subscription callbacks that are lambdas
@@ -84,15 +85,17 @@ StatementMatcher CallbackLambdaMatcher =
              hasDescendant(lambdaExpr().bind("decl")))
         .bind("call");
 
-// Matches all calls to timer/subscription callback registrations
+// Matches all calls to pub/sub/timer registrations
 StatementMatcher CallbackRegistrationMatcher =
     callExpr(callee(functionDecl(anyOf(hasName("create_timer"),
-                                       hasName("create_subscription")))))
+                                       hasName("create_subscription"),
+                                       hasName("create_publisher")))))
         .bind("call");
 
 StatementMatcher PublisherRegistrationMatcher = binaryOperation(
     isAssignmentOperator(), hasLHS(ChainedMemberMatcher),
-    hasRHS(callExpr(
-        callee(functionDecl(hasName("create_publisher"))),
-        optionally(hasArgument(0, stringLiteral().bind("topic_name"))))));
+    hasRHS(
+        callExpr(callee(functionDecl(hasName("create_publisher"))),
+                 optionally(hasArgument(0, stringLiteral().bind("topic_name"))))
+            .bind("call")));
 } // namespace schmeller::ROS2DepCheck::Matchers

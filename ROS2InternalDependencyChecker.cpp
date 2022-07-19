@@ -9,10 +9,11 @@
 
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 
-#include "CompoundHandler.h"
+#include "CallbackRegHandler.h"
 #include "DataWriter.h"
 #include "Matchers.h"
 #include "MemberExprHandler.h"
+#include "NodeDeclHandler.h"
 
 using namespace llvm;
 using namespace clang;
@@ -52,6 +53,9 @@ int main(int argc, const char **argv) {
 
   MemberExprHandler RawMemberHandler(&Writer, false);
   MemberExprHandler CtxMemberHandler(&Writer, true);
+  CallbackRegHandler RawCbHandler(&Writer, false);
+  CallbackRegHandler CtxCbHandler(&Writer, true);
+  NodeDeclHandler NodeHandler(&Writer);
   MatchFinder Finder;
 
   auto addMatcher = [&Finder](auto Matcher, auto Handler) {
@@ -68,10 +72,11 @@ int main(int argc, const char **argv) {
   addMatcher(Matchers::AnyPublishCallMatcher, &CtxMemberHandler);
   addMatcher(Matchers::MemberPublishCallMatcher, &CtxMemberHandler);
 
-  // addMatcher(Matchers::FuncContainingPubCallMatcher, &MemberHandler);
-  // addMatcher(Matchers::CallbackFuncMatcher, &MemberHandler);
-  // addMatcher(Matchers::CallbackLambdaMatcher, &MemberHandler);
-  // addMatcher(Matchers::CallbackRegistrationMatcher, &MemberHandler);
+  addMatcher(Matchers::CallbackFuncMatcher, &CtxCbHandler);
+  addMatcher(Matchers::CallbackLambdaMatcher, &CtxCbHandler);
+  addMatcher(Matchers::CallbackRegistrationMatcher, &RawCbHandler);
+  addMatcher(Matchers::PublisherRegistrationMatcher, &CtxCbHandler);
+  addMatcher(Matchers::NodeDeclMatcher, &NodeHandler);
 
   int ExitStatus = Tool.run(newFrontendActionFactory(&Finder).get());
 
@@ -85,7 +90,7 @@ int main(int argc, const char **argv) {
   }
 
   Writer.write(SourceFilenameMutable);
-  std::cout << '[' << ExitStatus << ']' << " Done, outputs written."
-            << std::endl;
+  std::cout << '[' << ExitStatus << ']' << " Done, outputs written to "
+            << SourceFilenameMutable << std::endl;
   return ExitStatus;
 }

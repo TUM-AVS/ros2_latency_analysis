@@ -2,12 +2,13 @@ cmake_minimum_required(VERSION 3.22)
 
 project(ros2-internal-dependency-checker)
 
-include_directories("/usr/lib/llvm-14/include")
+include_directories("/usr/lib/llvm-13/include")
 
 add_executable(ros2-internal-dependency-checker
   ROS2InternalDependencyChecker.cpp
-        ASTUtils.cpp ASTUtils.h DataWriter.cpp DataWriter.h MemberExprHandler.h Matchers.h CompoundHandler.cpp CompoundHandler.h MemberExprHandler.cpp Matchers.cpp)
+        ASTUtils.cpp ASTUtils.h DataWriter.cpp DataWriter.h MemberExprHandler.h Matchers.h MemberExprHandler.cpp Matchers.cpp NodeDeclHandler.cpp NodeDeclHandler.h CallbackRegHandler.cpp CallbackRegHandler.h ErrorPrinter.h)
 
+set_property(TARGET ros2-internal-dependency-checker PROPERTY CXX_STANDARD 20)
 target_compile_options(ros2-internal-dependency-checker PRIVATE -w)
 target_link_directories(ros2-internal-dependency-checker PRIVATE /usr/lib/llvm-14/lib)
 

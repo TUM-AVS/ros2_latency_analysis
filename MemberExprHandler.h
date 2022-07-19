@@ -15,6 +15,7 @@
 #include "ASTUtils.h"
 #include "DataWriter.h"
 #include "Matchers.h"
+#include "ErrorPrinter.h"
 
 using namespace clang;
 using namespace clang::ast_matchers;

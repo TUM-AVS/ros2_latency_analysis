@@ -21,10 +21,19 @@ worker_task(){
   json_name=$(realpath --relative-to $source_dir $node_tu)
   json_name=${json_name//\//-}
   json_name=${json_name//'.cpp'/'.json'}
+
   i=$(($i + 1))
   echo "$i $out_name"
-  ./dep-check --extra-arg=-w -p $build_dir $node_tu > /dev/null
-  mv "./$out_name" "$out_dir/$json_name"
+
+  tu_in_db=$(cat $build_dir/compile_commands.json | grep "$node_tu")
+  if [ -z "$tu_in_db" ]
+  then
+    echo "File not found in compile DB: $(realpath --relative-to $source_dir $node_tu)"
+    echo "null" > "$out_dir/$json_name"
+  else
+    ./dep-check --extra-arg=-w -p $build_dir $node_tu > /dev/null
+    mv "./$out_name" "$out_dir/$json_name"
+  fi
 }
 
 N=8

@@ -17,9 +17,7 @@ void schmeller::ROS2DepCheck::MemberExprHandler::run(
   const MemberExpr *MemberRef =
       Result.Nodes.getNodeAs<MemberExpr>(Matchers::MemberReference);
   if (!MemberRef) {
-    std::cerr << "[ERROR][MemberExprHandler] Match on MemberExpr has no "
-                 "MemberExpr bound to 'ref'"
-              << std::endl;
+    ERR("Match on MemberExpr has no MemberExpr bound to 'ref'");
     return;
   }
 
@@ -52,10 +50,7 @@ void schmeller::ROS2DepCheck::MemberExprHandler::run(
   const CXXMethodDecl *ContainingMethod =
       Result.Nodes.getNodeAs<CXXMethodDecl>("containing_method");
   if (!ContainingMethod) {
-    std::cerr
-        << "[WARN ][MemberExprHandler] MemberExpr not inside a CXXMethod.\n  "
-        << MemberRef->getSourceRange().printToString(*Result.SourceManager)
-        << std::endl;
+    SWARN(MemberRef, Result, "MemberExpr not inside a CXXMethod.");
   }
 
   /*********************************************
@@ -77,11 +72,7 @@ void schmeller::ROS2DepCheck::MemberExprHandler::run(
   const CXXRecordDecl *ContainingNode =
       Result.Nodes.getNodeAs<CXXRecordDecl>("node_decl");
   if (!ContainingNode) {
-    std::cerr << "[ERROR][MemberExprHandler] MemberExpr has no declaration "
-                 "in ROS Node.\n  "
-              << MemberRef->getSourceRange().printToString(
-                     *Result.SourceManager)
-              << std::endl;
+    SERR(MemberRef, Result, "MemberExpr has no declaration in ROS Node.");
     return;
   }
 
@@ -120,11 +111,7 @@ schmeller::ROS2DepCheck::MemberExprHandler::getMemberChain(
     int I = 0;
     for (const auto *Child : CurRef->children()) {
       if (I++ != 0)
-        std::cerr << "[ERROR][MemberExprHandler] More than one child in "
-                     "MemberRef chain\n  "
-                  << Child->getSourceRange().printToString(
-                         *Result.SourceManager)
-                  << std::endl;
+        SERR(Child, Result, "More than one child in MemberRef chain");
       CurRef = Child;
     }
 
@@ -150,10 +137,7 @@ void schmeller::ROS2DepCheck::MemberExprHandler::getContextOf(
   std::transform(CBinds.begin(), CBinds.end(), std::back_inserter(CNodes),
                  [&Result](const char *Bind) {
                    if (Result.Nodes.getMap().count(Bind)) {
-                     if (std::string(Bind) ==
-                         std::string(Matchers::DeclUsingMember))
-                       std::cout << "DeclUsingMember" << std::endl;
-                     return &Result.Nodes.getMap().at(Bind);
+                       return &Result.Nodes.getMap().at(Bind);
                    }
                    return (const DynTypedNode *)NULL;
                  });
@@ -164,22 +148,15 @@ void schmeller::ROS2DepCheck::MemberExprHandler::getContextOf(
 
   int NActive = std::count(CActive.begin(), CActive.end(), true);
   if (NActive > 1) {
-    std::cerr << "[ERROR][MemberExprHandler] Multiple contexts for the "
-                 "member reference were detected at once:"
-              << CActive[0] << CActive[1] << CActive[2] << CActive[3]
-              << CActive[4] << CActive[5] << "\n  "
-              << MemberRef->getSourceRange().printToString(
-                     *Result.SourceManager)
-              << std::endl;
+    SERR(MemberRef, Result,
+         "Multiple contexts for the member reference were detected at once:"
+             << CActive[0] << CActive[1] << CActive[2] << CActive[3]
+             << CActive[4] << CActive[5]);
     return;
   }
 
   if (NActive == 0) {
-    std::cerr << "[WARN ][MemberExprHandler] No context detected for the "
-                 "member reference.\n  "
-              << MemberRef->getSourceRange().printToString(
-                     *Result.SourceManager)
-              << std::endl;
+    SWARN(MemberRef, Result, "No context detected for the member reference.");
   }
 
   int CIndex =
