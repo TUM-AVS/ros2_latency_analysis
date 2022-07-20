@@ -60,7 +60,7 @@ class ClNode:
 
     def __init__(self, json_obj):
         self.id = json_obj['id']
-        self.qualified_name = json_obj['id']
+        self.qualified_name = json_obj['qualified_name']
         self.source_range = ClSourceRange(json_obj['source_range'])
         self.field_ids = list(map(lambda obj: obj['id'], json_obj['fields'])) if 'fields' in json_obj else None
         self.method_ids = list(map(lambda obj: obj['id'], json_obj['methods'])) if 'methods' in json_obj else None

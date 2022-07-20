@@ -12,7 +12,7 @@ import termcolor
 from clang_interop.types import ClNode, ClField, ClTimer, ClMethod, ClPublisher, ClSubscription, ClMemberRef, ClContext, \
     ClTranslationUnit
 
-IN_DIR = "/home/max/Projects/llvm-project/clang-tools-extra/ros2-internal-dependency-checker/output"
+IN_DIR = "/home/max/Projects/ma-ros2-internal-dependency-analyzer/output"
 SRC_DIR = "/home/max/Projects/autoware/src"
 
 OUT_NAME = "clang_objects.pkl"
@@ -88,9 +88,6 @@ def find_data_deps(accesses: Iterable[ClMemberRef]):
 
     reads = pd.DataFrame.from_records(list(reads), columns=['method_id', 'member_id'])
     writes = pd.DataFrame.from_records(list(writes), columns=['method_id', 'member_id'])
-    pub_dict = {method: set() for method, _ in publications}
-    for method, member in publications:
-        pub_dict[method].add(member)
 
     deps = {}
 
