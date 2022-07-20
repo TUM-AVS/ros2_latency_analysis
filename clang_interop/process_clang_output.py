@@ -3,12 +3,14 @@ import json
 import os
 import pickle
 import re
-from dataclasses import dataclass
-from typing import Tuple, List, Literal, Iterable
+from typing import Tuple, Iterable
 
 import numpy as np
 import pandas as pd
 import termcolor
+
+from clang_interop.types import ClNode, ClField, ClTimer, ClMethod, ClPublisher, ClSubscription, ClMemberRef, ClContext, \
+    ClTranslationUnit
 
 IN_DIR = "/home/max/Projects/llvm-project/clang-tools-extra/ros2-internal-dependency-checker/output"
 SRC_DIR = "/home/max/Projects/autoware/src"
@@ -58,159 +60,10 @@ def fuse_objects(o1, o2):
     return o1
 
 
-@dataclass
-class SourceRange:
-    start_file: str
-    start_line: int | None
-    start_col: int | None
-
-    end_file: str
-    end_line: int | None
-    end_col: int | None
-
-    def __init__(self, json_obj):
-        begin = json_obj["begin"].split(":")
-        end = json_obj["end"].split(":")
-
-        self.start_file = os.path.realpath(begin[0])
-        self.start_line = int(begin[1]) if len(begin) > 1 else None
-        self.start_col = int(begin[2].split(" ")[0]) if len(begin) > 2 else None
-
-        self.end_file = os.path.realpath(end[0])
-        self.end_line = int(end[1]) if len(end) > 1 else None
-        self.end_col = int(end[2].split(" ")[0]) if len(end) > 2 else None
-
-    def __hash__(self):
-        return hash((self.start_file, self.start_line, self.start_col,
-                     self.end_file, self.end_line, self.end_col))
-
-
-@dataclass
-class Node:
-    id: int
-    qualified_name: str
-    source_range: 'SourceRange'
-    field_ids: List[int] | None
-    method_ids: List[int] | None
-
-    def __init__(self, json_obj):
-        self.id = json_obj['id']
-        self.qualified_name = json_obj['id']
-        self.source_range = SourceRange(json_obj['source_range'])
-        self.field_ids = list(map(lambda obj: obj['id'], json_obj['fields'])) if 'fields' in json_obj else None
-        self.method_ids = list(map(lambda obj: obj['id'], json_obj['methods'])) if 'methods' in json_obj else None
-
-    def __hash__(self):
-        return hash(self.id)
-
-
-@dataclass
-class Method:
-    id: int
-    qualified_name: str
-    source_range: 'SourceRange'
-    return_type: str | None
-    parameter_types: List[str] | None
-
-    def __init__(self, json_obj):
-        self.id = json_obj['id']
-        self.qualified_name = json_obj['qualified_name']
-        self.source_range = SourceRange(json_obj['source_range'])
-        self.return_type = json_obj['signature']['return_type'] if 'signature' in json_obj else None
-        self.parameter_types = json_obj['signature']['parameter_types'] if 'signature' in json_obj else None
-
-    def __hash__(self):
-        return hash(self.id)
-
-
-@dataclass
-class Field:
-    id: int
-    qualified_name: str
-    source_range: 'SourceRange'
-
-    def __init__(self, json_obj):
-        self.id = json_obj['id']
-        self.qualified_name = json_obj['qualified_name']
-        self.source_range = SourceRange(json_obj['source_range'])
-
-    def __hash__(self):
-        return hash(self.id)
-
-
-@dataclass
-class MemberRef:
-    type: Literal["read", "write", "call", "arg", "pub"] | None
-    member_chain: List[int]
-    method_id: int | None
-    node_id: int | None
-    source_range: 'SourceRange'
-
-    def __init__(self, json_obj):
-        access_type = json_obj['context']['access_type']
-        if access_type == 'none':
-            access_type = None
-        self.type = access_type
-        self.member_chain = list(map(lambda obj: obj['id'], json_obj['member'][::-1]))
-        self.method_id = json_obj['context']['method']['id'] if 'method' in json_obj['context'] else None
-        self.node_id = json_obj['context']['node']['id'] if 'node' in json_obj['context'] else None
-        self.source_range = SourceRange(json_obj['context']['statement']['source_range'])
-
-    def __hash__(self):
-        return self.source_range.__hash__()
-
-
-@dataclass
-class Subscription:
-    topic: str | None
-    callback_id: int | None
-    source_range: 'SourceRange'
-
-    def __init__(self, json_obj):
-        self.topic = json_obj['topic'] if 'topic' in json_obj else None
-        self.callback_id = json_obj['callback']['id'] if 'callback' in json_obj else None
-        self.source_range = SourceRange(json_obj['source_range'])
-
-    def __hash__(self):
-        return self.source_range.__hash__()
-
-
-@dataclass
-class Publisher:
-    topic: str | None
-    member_id: int | None
-    source_range: 'SourceRange'
-
-    def update(self, t2: 'Timer'):
-        return self
-
-    def __init__(self, json_obj):
-        self.topic = json_obj['topic'] if 'topic' in json_obj else None
-        self.member_id = json_obj['member']['id'] if 'member' in json_obj else None
-        self.source_range = SourceRange(json_obj['source_range'])
-
-    def __hash__(self):
-        return self.source_range.__hash__()
-
-
-@dataclass
-class Timer:
-    callback_id: int | None
-    source_range: 'SourceRange'
-
-    def __init__(self, json_obj):
-        self.callback_id = json_obj['callback']['id'] if 'callback' in json_obj else None
-        self.source_range = SourceRange(json_obj['source_range'])
-
-    def __hash__(self):
-        return self.source_range.__hash__()
-
-
-def find_data_deps(nodes: Iterable[Node], pubs: Iterable[Publisher], subs: Iterable[Subscription],
-                   timers: Iterable[Timer], fields, methods, accesses: Iterable[MemberRef]):
+def find_data_deps(accesses: Iterable[ClMemberRef]):
     writes = set()
     reads = set()
-    publications = set()
+    publications = {}
 
     for member_ref in accesses:
         member_id = member_ref.member_chain[0] if member_ref.member_chain else None
@@ -229,7 +82,9 @@ def find_data_deps(nodes: Iterable[Node], pubs: Iterable[Publisher], subs: Itera
                 writes.add(dep_tuple)
                 reads.add(dep_tuple)
             case "pub":
-                publications.add(dep_tuple)
+                if member_ref.method_id not in publications:
+                    publications[member_ref.method_id] = set()
+                publications[member_ref.method_id].add(member_id)
 
     reads = pd.DataFrame.from_records(list(reads), columns=['method_id', 'member_id'])
     writes = pd.DataFrame.from_records(list(writes), columns=['method_id', 'member_id'])
@@ -250,7 +105,7 @@ def find_data_deps(nodes: Iterable[Node], pubs: Iterable[Publisher], subs: Itera
 
         deps[reading_method].discard(reading_method)  # Remove reflexive dependencies
 
-    return publications, deps
+    return deps, publications
 
 
 def dedup(elems):
@@ -274,6 +129,10 @@ def dedup(elems):
     return ret_list
 
 
+def dictify(elems, key='id'):
+    return {getattr(e, key): e for e in elems}
+
+
 def definitions_from_json(cb_dict):
     nodes = []
     pubs = []
@@ -285,35 +144,35 @@ def definitions_from_json(cb_dict):
 
     if "nodes" in cb_dict:
         for node in cb_dict["nodes"]:
-            nodes.append(Node(node))
+            nodes.append(ClNode(node))
             for field in node["fields"]:
-                fields.append(Field(field))
+                fields.append(ClField(field))
             for method in node["methods"]:
-                methods.append(Method(method))
+                methods.append(ClMethod(method))
 
     if "publishers" in cb_dict:
         for publisher in cb_dict["publishers"]:
-            pubs.append(Publisher(publisher))
+            pubs.append(ClPublisher(publisher))
 
     if "subscriptions" in cb_dict:
         for subscription in cb_dict["subscriptions"]:
-            subs.append(Subscription(subscription))
+            subs.append(ClSubscription(subscription))
 
     if "timers" in cb_dict:
         for timer in cb_dict["timers"]:
-            timers.append(Timer(timer))
+            timers.append(ClTimer(timer))
 
     if "accesses" in cb_dict:
         for access_type in cb_dict["accesses"]:
             for access in cb_dict["accesses"][access_type]:
-                accesses.append(MemberRef(access))
+                accesses.append(ClMemberRef(access))
 
-    nodes = dedup(nodes)
-    pubs = dedup(pubs)
-    subs = dedup(subs)
-    timers = dedup(timers)
-    fields = dedup(fields)
-    methods = dedup(methods)
+    nodes = dictify(dedup(nodes))
+    pubs = dictify(dedup(pubs), key='member_id')
+    subs = dictify(dedup(subs), key='callback_id')
+    timers = dictify(dedup(timers), key='callback_id')
+    fields = dictify(dedup(fields))
+    methods = dictify(dedup(methods))
 
     return nodes, pubs, subs, timers, fields, methods, accesses
 
@@ -341,7 +200,7 @@ def prompt_user(file: str, cb: str, idf: str, text: str) -> Tuple[str, bool, boo
     return answer, answer == "q", answer == "z"
 
 
-def main(nodes, cbs, fields, methods):
+def main(cbs):
     open_files = {}
     cb_rw_dict = {}
 
@@ -407,8 +266,8 @@ def main(nodes, cbs, fields, methods):
     print("Done.")
 
 
-if __name__ == "__main__":
-    out_dict = {}
+def process_clang_output(directory=IN_DIR):
+    clang_context = ClContext()
 
     for filename in os.listdir(IN_DIR):
         source_filename = SRC_FILE_NAME(filename)
@@ -418,22 +277,20 @@ if __name__ == "__main__":
             if cb_dict is None:
                 print(f"  [WARN ] Empty tool output detected in {filename}")
                 continue
-            definitions = definitions_from_json(cb_dict)
-            deps, publications = find_data_deps(*definitions)
 
-            (nodes, pubs, subs, timers, fields, methods, accesses) = definitions
-            out_dict[source_filename] = {
-                    "dependencies": deps,
-                    "publications": publications,
-                    "nodes": nodes,
-                    "publishers": pubs,
-                    "subscriptions": subs,
-                    "timers": timers,
-                    "fields": fields,
-                    "methods": methods
-            }
+            nodes, pubs, subs, timers, fields, methods, accesses = definitions_from_json(cb_dict)
+            deps, publications = find_data_deps(accesses)
+
+            tu = ClTranslationUnit(deps, publications, nodes, pubs, subs, timers, fields, methods, accesses)
+            clang_context.translation_units[source_filename] = tu
+
+    return clang_context
+
+
+if __name__ == "__main__":
+    clang_context = process_clang_output()
 
     with open(OUT_NAME, "wb") as f:
-        pickle.dump(out_dict, f)
+        pickle.dump(clang_context, f)
 
     print("Done.")
