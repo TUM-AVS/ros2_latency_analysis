@@ -68,5 +68,9 @@ namespace schmeller::ROS2DepCheck::Matchers {
   extern StatementMatcher CallbackRegistrationMatcher;
 
   extern StatementMatcher PublisherRegistrationMatcher;
+
+  extern DeclarationMatcher NodeCtorInitMatcher;
+
+  extern StatementMatcher  NodeNameMatcher;
 } // namespace schmeller::ROS2DepCheck::Matchers
 #endif // ROS2_INTERNAL_DEPENDENCY_CHECKER_MATCHERS_H

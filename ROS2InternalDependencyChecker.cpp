@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cppcoreguidelines-interfaces-global-init"
+#pragma ide diagnostic ignored "cert-err58-cpp"
 // Declares llvm::cl::extrahelp.
 #include <llvm/Support/CommandLine.h>
 
@@ -14,6 +17,7 @@
 #include "Matchers.h"
 #include "MemberExprHandler.h"
 #include "NodeDeclHandler.h"
+#include "NodeNameHandler.h"
 
 using namespace llvm;
 using namespace clang;
@@ -25,13 +29,19 @@ using namespace schmeller::ROS2DepCheck;
 // only ones displayed.
 static llvm::cl::OptionCategory ROS2ToolCategory("ros2-tool options");
 
+static cl::opt<std::string> OutFilename(
+    "o",
+    cl::desc("The name of the produced output JSON file, "
+             "including the file extension.\nThe parent path must exist."),
+    cl::init("result.json"), cl::cat(ROS2ToolCategory));
+
 // CommonOptionsParser declares HelpMessage with a description of the common
 // command-line options related to the compilation database and input files.
 // It's nice to have this help message in all tools.
-static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+[[maybe_unused]] static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 
 // A help message for this specific tool can be added afterwards.
-static cl::extrahelp
+[[maybe_unused]] static cl::extrahelp
     MoreHelp("\nThis tool extracts:\n"
              "* ROS 2 nodes and their member fields and methods\n"
              "* member references from ROS 2 subscription and timer callbacks\n"
@@ -56,6 +66,7 @@ int main(int argc, const char **argv) {
   CallbackRegHandler RawCbHandler(&Writer, false);
   CallbackRegHandler CtxCbHandler(&Writer, true);
   NodeDeclHandler NodeHandler(&Writer);
+  NodeNameHandler NameHandler(&Writer);
   MatchFinder Finder;
 
   auto addMatcher = [&Finder](auto Matcher, auto Handler) {
@@ -77,20 +88,13 @@ int main(int argc, const char **argv) {
   addMatcher(Matchers::CallbackRegistrationMatcher, &RawCbHandler);
   addMatcher(Matchers::PublisherRegistrationMatcher, &CtxCbHandler);
   addMatcher(Matchers::NodeDeclMatcher, &NodeHandler);
+  addMatcher(Matchers::NodeNameMatcher, &NameHandler);
 
   int ExitStatus = Tool.run(newFrontendActionFactory(&Finder).get());
 
-  const char *SourceFilename = OptionsParser.getSourcePathList()[0].c_str();
-  char *SourceFilenameMutable = (char *)malloc(strlen(SourceFilename) + 1);
-  strcpy(SourceFilenameMutable, SourceFilename);
-
-  for (int i = 0; i < strlen(SourceFilenameMutable) + 1; ++i) {
-    if (SourceFilenameMutable[i] == '/')
-      SourceFilenameMutable[i] = '-';
-  }
-
-  Writer.write(SourceFilenameMutable);
+  Writer.write(OutFilename.c_str());
   std::cout << '[' << ExitStatus << ']' << " Done, outputs written to "
-            << SourceFilenameMutable << std::endl;
+            << OutFilename << std::endl;
   return ExitStatus;
 }
+#pragma clang diagnostic pop

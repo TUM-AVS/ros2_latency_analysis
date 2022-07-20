@@ -18,12 +18,13 @@ void CallbackRegHandler::run(const MatchFinder::MatchResult &Result) {
       Result.Nodes.getNodeAs<StringLiteral>("topic_name");
   const bool HasCbDecl = Result.Nodes.getMap().count("decl") > 0;
 
-  if (Call == NULL) {
+  if (Call == nullptr) {
     ERR("Call expression not found in callback registration handler");
     return;
   }
 
-  json OutJson = {};
+  json OutJson = {{"source_range",
+                   Writer->sourceRangeToJson(Call->getSourceRange(), Result)}};
 
   /*********************************************
    * Check type of created object and verify
@@ -50,14 +51,14 @@ void CallbackRegHandler::run(const MatchFinder::MatchResult &Result) {
 
   if (IncludeContext &&
       (JsonPath == "subscriptions" || JsonPath == "publishers") &&
-      Topic == NULL) {
+      Topic == nullptr) {
     ERR("Call to " << CreateCallName << " has no topic\n"
                    << Call->getSourceRange().printToString(
                           *Result.SourceManager));
     return;
   }
 
-  if (IncludeContext && JsonPath == "publishers" && MemberRef == NULL) {
+  if (IncludeContext && JsonPath == "publishers" && MemberRef == nullptr) {
     ERR("Created publisher is not "
         "assigned to a node member\n"
         << Call->getSourceRange().printToString(*Result.SourceManager));
@@ -76,7 +77,7 @@ void CallbackRegHandler::run(const MatchFinder::MatchResult &Result) {
    * Get topic name if present
    *********************************************/
 
-  if (Topic != NULL) {
+  if (Topic != nullptr) {
     std::string TopicName = Topic->getString().str();
     OutJson["topic"] = TopicName;
   }
@@ -97,9 +98,9 @@ void CallbackRegHandler::run(const MatchFinder::MatchResult &Result) {
      * Else, try getting CB as lambdaExpr
      *********************************************/
 
-    if (CbFuncDecl == NULL) {
-      const LambdaExpr *CbLambda = Result.Nodes.getNodeAs<LambdaExpr>("decl");
-      if (CbLambda == NULL) {
+    if (CbFuncDecl == nullptr) {
+      const auto *CbLambda = Result.Nodes.getNodeAs<LambdaExpr>("decl");
+      if (CbLambda == nullptr) {
         ERR("Callback declaration not found but bound\n"
             << Call->getSourceRange().printToString(*Result.SourceManager));
         return;
@@ -119,7 +120,7 @@ void CallbackRegHandler::run(const MatchFinder::MatchResult &Result) {
    * Write member reference if found
    *********************************************/
 
-  if (MemberRef != NULL) {
+  if (MemberRef != nullptr) {
     OutJson["member"] = Writer->memberToJson(MemberRef, Result);
   }
 

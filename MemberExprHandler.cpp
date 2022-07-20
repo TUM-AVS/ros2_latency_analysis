@@ -58,6 +58,7 @@ void schmeller::ROS2DepCheck::MemberExprHandler::run(
    *********************************************/
 
   if (ContainingMethod) {
+    ContainingMethod = ContainingMethod->getCanonicalDecl();
     J["context"]["method"] = {
         {"id", ContainingMethod->getID()},
         {"qualified_name", ContainingMethod->getQualifiedNameAsString()},
@@ -81,7 +82,7 @@ void schmeller::ROS2DepCheck::MemberExprHandler::run(
    *********************************************/
 
   J["context"]["node"] = {
-      {"id", ContainingNode->getID()},
+      {"id", ContainingNode->getCanonicalDecl()->getID()},
       {"qualified_name", ContainingNode->getQualifiedNameAsString()},
       {"source_range",
        Writer->sourceRangeToJson(ContainingNode->getSourceRange(), Result)}};
@@ -140,12 +141,12 @@ void schmeller::ROS2DepCheck::MemberExprHandler::getContextOf(
                    if (Result.Nodes.getMap().count(Bind)) {
                      return &Result.Nodes.getMap().at(Bind);
                    }
-                   return (const DynTypedNode *)NULL;
+                   return (const DynTypedNode *)nullptr;
                  });
 
   std::vector<bool> CActive;
   std::transform(CNodes.begin(), CNodes.end(), std::back_inserter(CActive),
-                 [](const DynTypedNode *Ref) { return Ref != NULL; });
+                 [](const DynTypedNode *Ref) { return Ref != nullptr; });
 
   int NActive = std::count(CActive.begin(), CActive.end(), true);
   if (NActive > 1) {

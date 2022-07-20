@@ -6,13 +6,15 @@
 
 namespace schmeller::ROS2DepCheck {
 void NodeDeclHandler::run(const MatchFinder::MatchResult &Result) {
-  const CXXRecordDecl *NodeDecl =
+  const auto *NodeDecl =
       Result.Nodes.getNodeAs<CXXRecordDecl>("node_decl");
 
-  if (NodeDecl == NULL) {
+  if (NodeDecl == nullptr) {
     ERR("Node decl not found in node decl handler");
     return;
   }
+
+  NodeDecl = NodeDecl->getCanonicalDecl();
 
   Writer->addAtPath("nodes", Writer->nodeToJson(NodeDecl, Result));
 }

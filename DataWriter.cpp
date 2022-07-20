@@ -7,6 +7,8 @@
 namespace schmeller::ROS2DepCheck {
 json DataWriter::functionDeclToJson(const FunctionDecl *Decl,
                                     const MatchFinder::MatchResult &Result) {
+  Decl = Decl->getCanonicalDecl();
+
   json J = {
       {"id", Decl->getID()},
       {"qualified_name", Decl->getQualifiedNameAsString()},
@@ -25,6 +27,8 @@ json DataWriter::functionDeclToJson(const FunctionDecl *Decl,
 
 json DataWriter::nodeToJson(const CXXRecordDecl *Decl,
                             const MatchFinder::MatchResult &Result) {
+
+  Decl = Decl->getCanonicalDecl();
   json J = {{"id", Decl->getID()},
             {"qualified_name", Decl->getQualifiedNameAsString()},
             {"source_range", sourceRangeToJson(Decl->getSourceRange(), Result)},
@@ -32,6 +36,7 @@ json DataWriter::nodeToJson(const CXXRecordDecl *Decl,
             {"methods", json::array()}};
 
   for (const auto *Field : Decl->fields()) {
+    Field = Field->getCanonicalDecl();
     J["fields"].push_back(
         {{"id", Field->getID()},
          {"qualified_name", Field->getQualifiedNameAsString()},
@@ -39,11 +44,8 @@ json DataWriter::nodeToJson(const CXXRecordDecl *Decl,
   }
 
   for (const auto *Method : Decl->methods()) {
-    J["methods"].push_back(
-        {{"id", Method->getID()},
-         {"qualified_name", Method->getQualifiedNameAsString()},
-         {"source_range",
-          sourceRangeToJson(Method->getSourceRange(), Result)}});
+    Method = Method->getCanonicalDecl();
+    J["methods"].push_back(functionDeclToJson(Method->getAsFunction(), Result));
   }
 
   return J;
@@ -61,11 +63,12 @@ json DataWriter::memberChainToJson(const std::vector<MemberExpr *> &MemberChain,
 
 json DataWriter::memberToJson(const MemberExpr *Member,
                               const MatchFinder::MatchResult &Result) {
-  return {
-      {"id", Member->getMemberDecl()->getID()},
-      {"qualified_name", Member->getMemberDecl()->getQualifiedNameAsString()},
-      {"source_range", sourceRangeToJson(Member->getSourceRange(), Result)},
-      {"name", Member->getMemberNameInfo().getAsString()}};
+  const ValueDecl *MemberDecl =
+      (ValueDecl *) Member->getMemberDecl()->getCanonicalDecl();
+  return {{"id", MemberDecl->getID()},
+          {"qualified_name", MemberDecl->getQualifiedNameAsString()},
+          {"source_range", sourceRangeToJson(Member->getSourceRange(), Result)},
+          {"name", Member->getMemberNameInfo().getAsString()}};
 }
 
 json DataWriter::sourceRangeToJson(const SourceRange &Range,
@@ -92,7 +95,7 @@ void DataWriter::addAtPath(const char *Path, const json &Node) {
 
   json *JsonRef = &Json;
   for (auto It = PathSegments.begin(); It != PathSegments.end(); ++It) {
-    if (!JsonRef->contains(Path)) {
+    if (!JsonRef->contains(*It)) {
       if (It + 1 == PathSegments.end())
         (*JsonRef)[*It] = json::array(); // Last node in path is array
       else

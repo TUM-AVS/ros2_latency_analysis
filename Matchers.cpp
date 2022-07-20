@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cppcoreguidelines-interfaces-global-init"
+#pragma ide diagnostic ignored "cert-err58-cpp"
 #include "Matchers.h"
 
 namespace schmeller::ROS2DepCheck::Matchers {
@@ -98,4 +101,16 @@ StatementMatcher PublisherRegistrationMatcher = binaryOperation(
         callExpr(callee(functionDecl(hasName("create_publisher"))),
                  optionally(hasArgument(0, stringLiteral().bind("topic_name"))))
             .bind("call")));
+
+DeclarationMatcher NodeCtorInitMatcher = cxxConstructorDecl(
+    hasAnyConstructorInitializer(
+        cxxCtorInitializer(hasTypeLoc(loc(asString("class rclcpp::Node"))))
+            .bind("ctor_initializer")),
+    hasDeclContext(NodeDeclMatcher));
+
+StatementMatcher NodeNameMatcher = cxxConstructExpr(
+    hasParent(NodeCtorInitMatcher),
+    hasArgument(0, stringLiteral().bind("node_name")),
+    optionally(hasArgument(1, stringLiteral().bind("node_namespace"))));
 } // namespace schmeller::ROS2DepCheck::Matchers
+#pragma clang diagnostic pop

@@ -19,7 +19,6 @@ worker_task() {
   out_dir=$4
   node_tu=$5
 
-  out_name=${node_tu//\//-}
   rel_name=$(realpath --relative-to $source_dir $node_tu)
   json_name=${rel_name//\//-}
   json_name=${json_name//'.cpp'/'.json'}
@@ -31,8 +30,7 @@ worker_task() {
     echo -e "  \e[31mFile not found in compile DB: $(realpath --relative-to $source_dir $node_tu)\e[0m"
     echo "null" >"$out_dir/$json_name"
   else
-    ./dep-check --extra-arg=-w -p $build_dir $node_tu >/dev/null
-    mv "./$out_name" "$out_dir/$json_name"
+    ./dep-check --extra-arg=-w -o "$out_dir/$json_name" -p $build_dir $node_tu >/dev/null
   fi
 }
 
