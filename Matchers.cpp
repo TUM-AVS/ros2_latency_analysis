@@ -19,10 +19,13 @@ DeclarationMatcher NodeDeclMatcher =
 StatementMatcher MethodBodyMatcher = compoundStmt(forCallable(
     cxxMethodDecl(hasDeclContext(NodeDeclMatcher)).bind("containing_method")));
 
+StatementMatcher LambdaBodyMatcher = lambdaExpr().bind("containing_lambda");
+
 // Matches all references to members declared in a ROS node
 internal::BindableMatcher<Stmt> MemberMatcher =
     memberExpr(hasDeclaration(hasAncestor(NodeDeclMatcher)),
-               optionally(hasAncestor(MethodBodyMatcher)));
+               optionally(hasAncestor(MethodBodyMatcher)),
+               optionally(hasAncestor(LambdaBodyMatcher)));
 
 // Matches (reflexive-transitively) all references to members of members
 // declared in a ROS node

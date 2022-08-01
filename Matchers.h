@@ -24,7 +24,11 @@ namespace schmeller::ROS2DepCheck::Matchers {
 
   extern DeclarationMatcher NodeDeclMatcher;
 
+  // Matches compoundStmts that are the body of a method
   extern StatementMatcher MethodBodyMatcher;
+
+  // Matches lambdaExprs
+  extern StatementMatcher LambdaBodyMatcher;
 
   // Matches all references to members declared in a ROS node
   extern internal::BindableMatcher<Stmt> MemberMatcher;
@@ -45,7 +49,6 @@ namespace schmeller::ROS2DepCheck::Matchers {
   extern StatementMatcher MemberIsCalleeMatcher;
 
   // Matches ROS node members that are arguments to function calls
-  // TODO: matches CXX operators like ->, =, !=
   extern StatementMatcher MemberIsCallArgMatcher;
 
   extern StatementMatcher AnyPublishCallMatcher;

@@ -63,7 +63,29 @@ void schmeller::ROS2DepCheck::MemberExprHandler::run(
         {"id", ContainingMethod->getID()},
         {"qualified_name", ContainingMethod->getQualifiedNameAsString()},
         {"source_range", Writer->sourceRangeToJson(
-                             ContainingMethod->getSourceRange(), Result)}};
+                             ContainingMethod->getSourceRange(), Result)},
+        {"is_lambda", false}};
+  }
+
+  /*********************************************
+   * Find and validate containing lambda
+   *********************************************/
+
+  const LambdaExpr *ContainingLambda =
+      Result.Nodes.getNodeAs<LambdaExpr>("containing_lambda");
+
+  /*********************************************
+   * Output lambda context
+   *********************************************/
+
+  if (ContainingLambda) {
+    ContainingMethod = ContainingLambda->getCallOperator()->getCanonicalDecl();
+    J["context"]["method"] = {
+        {"id", ContainingMethod->getID()},
+        {"qualified_name", ContainingMethod->getQualifiedNameAsString()},
+        {"source_range", Writer->sourceRangeToJson(
+                             ContainingMethod->getSourceRange(), Result)},
+        {"is_lambda", true}};
   }
 
   /*********************************************
