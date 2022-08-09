@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from typing import List, Dict
 
 import pandas as pd
+from tqdm.notebook import tqdm
 
 from tracetools_analysis.processor.ros2 import Ros2Handler
 from tracetools_analysis.utils.ros2 import Ros2DataModelUtil
@@ -62,19 +63,26 @@ class TrContext:
 
         print("[TrContext] Caching dynamic properties...")
 
-        [(o.path, o.publishers, o.subscriptions, o.timers) for o in self.nodes.values()]
+        p = tqdm(desc=" ├─ Processing nodes", total=len(self.nodes.values()))
+        [(o.path, o.publishers, o.subscriptions, o.timers, p.update()) for o in self.nodes.values()]
         print(" ├─ Cached node properties")
-        [(o.instances, o.subscriptions) for o in self.publishers.values()]
+        p = tqdm(desc=" ├─ Processing publishers", total=len(self.publishers.values()))
+        [(o.instances, o.subscriptions, p.update()) for o in self.publishers.values()]
         print(" ├─ Cached publisher properties")
-        [(o.publishers, o.subscription_objects) for o in self.subscriptions.values()]
+        p = tqdm(desc=" ├─ Processing subscriptions", total=len(self.subscriptions.values()))
+        [(o.publishers, o.subscription_objects, p.update()) for o in self.subscriptions.values()]
         print(" ├─ Cached subscription properties")
-        [(o.nodes) for o in self.timers.values()]
+        p = tqdm(desc=" ├─ Processing timers", total=len(self.timers.values()))
+        [(o.nodes, p.update()) for o in self.timers.values()]
         print(" ├─ Cached timer properties")
-        [(o.callback_instances, o.owner, o.owner_info) for o in self.callback_objects.values()]
+        p = tqdm(desc=" ├─ Processing CB objects", total=len(self.callback_objects.values()))
+        [(o.callback_instances, o.owner, p.update()) for o in self.callback_objects.values()]
         print(" ├─ Cached callback object properties")
-        [(o.callback_objs) for o in self.callback_symbols.values()]
+        p = tqdm(desc=" ├─ Processing CB symbols", total=len(self.callback_symbols.values()))
+        [(o.callback_objs, p.update()) for o in self.callback_symbols.values()]
         print(" ├─ Cached callback symbol properties")
-        [(o.publishers, o.subscriptions) for o in self.topics.values()]
+        p = tqdm(desc=" ├─ Processing topics", total=len(self.topics.values()))
+        [(o.publishers, o.subscriptions, p.update()) for o in self.topics.values()]
         print(" └─ Cached topic properties\n")
 
     def __getstate__(self):
@@ -88,6 +96,9 @@ class TrContext:
         self.util = None
         self.handler = None
 
+    def __repr__(self):
+        return f"TrContext"
+
 
 @dataclass
 class TrNode:
@@ -97,11 +108,11 @@ class TrNode:
     rmw_handle: int
     name: str
     namespace: str
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @cached_property
     def path(self) -> str:
-        return '/'.join((self.namespace, self.name))
+        return '/'.join((self.namespace, self.name)).replace('//', '/')
 
     @cached_property
     def publishers(self) -> List['TrPublisher']:
@@ -128,7 +139,7 @@ class TrPublisher:
     rmw_handle: int
     topic_name: str
     depth: int
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @property
     def node(self) -> 'TrNode':
@@ -158,7 +169,7 @@ class TrSubscription:
     rmw_handle: int
     topic_name: str
     depth: int
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @property
     def node(self) -> 'TrNode':
@@ -187,7 +198,7 @@ class TrTimer:
     timestamp: int
     period: int
     tid: int
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @cached_property
     def nodes(self) -> List['TrNode']:
@@ -214,7 +225,7 @@ class TrSubscriptionObject:
     id: int  # subscription
     timestamp: int
     subscription_handle: int
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @property
     def subscription(self) -> 'TrSubscription':
@@ -233,7 +244,7 @@ class TrCallbackObject:
     id: int  # (reference) = subscription_object.id | timer.id | ....
     timestamp: int
     callback_object: int
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @cached_property
     def callback_instances(self) -> List['TrCallbackInstance']:
@@ -257,17 +268,6 @@ class TrCallbackObject:
             return 'Client'
         return None
 
-    @cached_property
-    def owner_info(self):
-        info = self._c.util.get_callback_owner_info(self.callback_object)
-        if info is None:
-            return None, None
-
-        type_name, dict_str = info.split(" -- ")
-        kv_strs = dict_str.split(", ")
-        info_dict = {k: v for k, v in map(lambda kv_str: kv_str.split(": ", maxsplit=1), kv_strs)}
-        return type_name, info_dict
-
     def __hash__(self):
         return hash((self.id, self.timestamp, self.callback_object))
 
@@ -277,7 +277,7 @@ class TrPublishInstance:
     publisher_handle: int
     timestamp: int
     message: int
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @property
     def publisher(self) -> 'TrPublisher':
@@ -293,7 +293,7 @@ class TrCallbackInstance:
     timestamp: pd.Timestamp
     duration: pd.Timedelta
     intra_process: bool
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @property
     def callback_obj(self) -> 'TrCallbackObject':
@@ -308,7 +308,7 @@ class TrCallbackSymbol:
     id: int  # callback_object
     timestamp: int
     symbol: str
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @cached_property
     def callback_objs(self) -> List['TrCallbackObject']:
@@ -325,7 +325,7 @@ class TrCallbackSymbol:
 @dataclass
 class TrTopic:
     name: str
-    _c: TrContext
+    _c: TrContext = field(repr=False)
 
     @cached_property
     def publishers(self) -> List['TrPublisher']:

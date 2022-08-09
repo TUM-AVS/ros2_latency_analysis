@@ -1,24 +1,36 @@
 import os
+import re
 from dataclasses import dataclass, field
 from typing import List, Literal, Dict, Set
 
 
 @dataclass
 class ClTranslationUnit:
-    dependencies: Dict[int, Set[int]]
-    publications: Dict[int, Set[int]]
-    nodes: Dict[int, 'ClNode']
-    publishers: Dict[int, 'ClPublisher']
-    subscriptions: Dict[int, 'ClSubscription']
-    timers: Dict[int, 'ClTimer']
-    fields: Dict[int, 'ClField']
-    methods: Dict[int, 'ClMethod']
-    accesses: List['ClMemberRef']
+    filename: str
+
+    def __hash__(self):
+        return hash(self.filename)
 
 
 @dataclass
 class ClContext:
-    translation_units: Dict[str, 'ClTranslationUnit'] = field(default_factory=dict)
+    translation_units: Set['ClTranslationUnit']
+
+    nodes: Set['ClNode']
+    publishers: Set['ClPublisher']
+    subscriptions: Set['ClSubscription']
+    timers: Set['ClTimer']
+
+    fields: Set['ClField']
+    methods: Set['ClMethod']
+
+    accesses: List['ClMemberRef']
+
+    dependencies: Dict['ClMethod', Set['ClMethod']]
+    publications: Dict['ClMethod', Set['ClPublisher']]
+
+    def __repr__(self):
+        return f"ClContext({len(self.translation_units)} TUs)"
 
 
 @dataclass
@@ -50,15 +62,17 @@ class ClSourceRange:
 
 @dataclass
 class ClNode:
+    tu: 'ClTranslationUnit' = field(repr=False)
     id: int
     qualified_name: str
-    source_range: 'ClSourceRange'
+    source_range: 'ClSourceRange' = field(repr=False)
     field_ids: List[int] | None
     method_ids: List[int] | None
     ros_name: str | None
     ros_namespace: str | None
 
-    def __init__(self, json_obj):
+    def __init__(self, json_obj, tu):
+        self.tu = tu
         self.id = json_obj['id']
         self.qualified_name = json_obj['qualified_name']
         self.source_range = ClSourceRange(json_obj['source_range'])
@@ -68,23 +82,43 @@ class ClNode:
         self.ros_namespace = json_obj['ros_namespace'] if 'ros_namespace' in json_obj else None
 
     def __hash__(self):
-        return hash(self.id)
+        return hash((self.tu, self.id))
 
 
 @dataclass
 class ClMethod:
+    tu: 'ClTranslationUnit' = field(repr=False)
     id: int
     qualified_name: str
-    source_range: 'ClSourceRange'
+    source_range: 'ClSourceRange' = field(repr=False)
     return_type: str | None
     parameter_types: List[str] | None
+    is_lambda: bool | None
 
-    def __init__(self, json_obj):
+    @property
+    def signature(self):
+        # Lambda definitions end in this suffix
+        class_name = self.qualified_name.removesuffix("::(anonymous class)::operator()")
+
+        # If the definition is no lambda (and hence no suffix has been removed), the last part after :: is the method
+        # name. Remove it to get the class name.
+        if class_name == self.qualified_name:
+            class_name = "::".join(class_name.split("::")[:-1])
+
+        if self.is_lambda:
+            return f"{class_name}$lambda"
+
+        param_str = ','.join(self.parameter_types) if self.parameter_types is not None else ''
+        return f"{self.return_type if self.return_type else ''} ({class_name})({param_str})"
+
+    def __init__(self, json_obj, tu):
+        self.tu = tu
         self.id = json_obj['id']
         self.qualified_name = json_obj['qualified_name']
         self.source_range = ClSourceRange(json_obj['source_range'])
         self.return_type = json_obj['signature']['return_type'] if 'signature' in json_obj else None
         self.parameter_types = json_obj['signature']['parameter_types'] if 'signature' in json_obj else None
+        self.is_lambda = json_obj['is_lambda'] if 'is_lambda' in json_obj else None
 
     def __hash__(self):
         return hash(self.id)
@@ -92,11 +126,13 @@ class ClMethod:
 
 @dataclass
 class ClField:
+    tu: 'ClTranslationUnit' = field(repr=False)
     id: int
     qualified_name: str
-    source_range: 'ClSourceRange'
+    source_range: 'ClSourceRange' = field(repr=False)
 
-    def __init__(self, json_obj):
+    def __init__(self, json_obj, tu):
+        self.tu = tu
         self.id = json_obj['id']
         self.qualified_name = json_obj['qualified_name']
         self.source_range = ClSourceRange(json_obj['source_range'])
@@ -107,13 +143,15 @@ class ClField:
 
 @dataclass
 class ClMemberRef:
+    tu: 'ClTranslationUnit' = field(repr=False)
     type: Literal["read", "write", "call", "arg", "pub"] | None
     member_chain: List[int]
     method_id: int | None
     node_id: int | None
-    source_range: 'ClSourceRange'
+    source_range: 'ClSourceRange' = field(repr=False)
 
-    def __init__(self, json_obj):
+    def __init__(self, json_obj, tu):
+        self.tu = tu
         access_type = json_obj['context']['access_type']
         if access_type == 'none':
             access_type = None
@@ -129,11 +167,13 @@ class ClMemberRef:
 
 @dataclass
 class ClSubscription:
+    tu: 'ClTranslationUnit' = field(repr=False)
     topic: str | None
     callback_id: int | None
-    source_range: 'ClSourceRange'
+    source_range: 'ClSourceRange' = field(repr=False)
 
-    def __init__(self, json_obj):
+    def __init__(self, json_obj, tu):
+        self.tu = tu
         self.topic = json_obj['topic'] if 'topic' in json_obj else None
         self.callback_id = json_obj['callback']['id'] if 'callback' in json_obj else None
         self.source_range = ClSourceRange(json_obj['source_range'])
@@ -144,14 +184,16 @@ class ClSubscription:
 
 @dataclass
 class ClPublisher:
+    tu: 'ClTranslationUnit' = field(repr=False)
     topic: str | None
     member_id: int | None
-    source_range: 'ClSourceRange'
+    source_range: 'ClSourceRange' = field(repr=False)
 
     def update(self, t2: 'ClTimer'):
         return self
 
-    def __init__(self, json_obj):
+    def __init__(self, json_obj, tu):
+        self.tu = tu
         self.topic = json_obj['topic'] if 'topic' in json_obj else None
         self.member_id = json_obj['member']['id'] if 'member' in json_obj else None
         self.source_range = ClSourceRange(json_obj['source_range'])
@@ -162,10 +204,12 @@ class ClPublisher:
 
 @dataclass
 class ClTimer:
+    tu: 'ClTranslationUnit' = field(repr=False)
     callback_id: int | None
-    source_range: 'ClSourceRange'
+    source_range: 'ClSourceRange' = field(repr=False)
 
-    def __init__(self, json_obj):
+    def __init__(self, json_obj, tu):
+        self.tu = tu
         self.callback_id = json_obj['callback']['id'] if 'callback' in json_obj else None
         self.source_range = ClSourceRange(json_obj['source_range'])
 

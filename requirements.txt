@@ -4,3 +4,4 @@ matplotlib
 pyvis
 graphviz
 ruamel.yaml
+fuzzywuzzy

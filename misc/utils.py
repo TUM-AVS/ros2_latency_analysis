@@ -50,9 +50,21 @@ def cached(name, function, file_deps: List[str]):
 
     dep_time = 0.0
     for file in file_deps:
+        # Get modified time of the current dependency
         m_time = os.path.getmtime(file) if os.path.exists(file) else 0.
+
+        # Update dependency time to be the newest modified time of any dependency
         if m_time > dep_time:
             dep_time = m_time
+
+        # Check directories recursively to get the newest modified time
+        for root, dirs, files in os.walk(file):
+            for f in files + dirs:
+                filename = os.path.join(root, f)
+                m_time = os.path.getmtime(filename)
+
+                if m_time > dep_time:
+                    dep_time = m_time
 
     deps_hash = stable_hash(sorted(file_deps))
     pkl_filename = f"cache/{name}_{deps_hash}.pkl"

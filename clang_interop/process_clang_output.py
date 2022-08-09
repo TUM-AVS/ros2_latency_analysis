@@ -2,14 +2,12 @@ import functools
 import json
 import os
 import pickle
-import re
-from typing import Tuple, Iterable
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
-import termcolor
 
-from clang_interop.types import ClNode, ClField, ClTimer, ClMethod, ClPublisher, ClSubscription, ClMemberRef, ClContext, \
+from clang_interop.cl_types import ClNode, ClField, ClTimer, ClMethod, ClPublisher, ClSubscription, ClMemberRef, ClContext, \
     ClTranslationUnit
 
 IN_DIR = "/home/max/Projects/ma-ros2-internal-dependency-analyzer/output"
@@ -123,14 +121,14 @@ def dedup(elems):
         ret_list.append(elem)
         print(f"Fused {len(elems)} {type(elem)}s")
 
-    return ret_list
+    return set(ret_list)
 
 
 def dictify(elems, key='id'):
     return {getattr(e, key): e for e in elems}
 
 
-def definitions_from_json(cb_dict):
+def definitions_from_json(cb_dict, tu):
     nodes = []
     pubs = []
     subs = []
@@ -141,145 +139,85 @@ def definitions_from_json(cb_dict):
 
     if "nodes" in cb_dict:
         for node in cb_dict["nodes"]:
-            nodes.append(ClNode(node))
+            nodes.append(ClNode(node, tu))
             for field in node["fields"]:
-                fields.append(ClField(field))
+                fields.append(ClField(field, tu))
             for method in node["methods"]:
-                methods.append(ClMethod(method))
+                methods.append(ClMethod(method, tu))
 
     if "publishers" in cb_dict:
         for publisher in cb_dict["publishers"]:
-            pubs.append(ClPublisher(publisher))
+            pubs.append(ClPublisher(publisher, tu))
 
     if "subscriptions" in cb_dict:
         for subscription in cb_dict["subscriptions"]:
-            subs.append(ClSubscription(subscription))
+            subs.append(ClSubscription(subscription, tu))
+            if "callback" in subscription:
+                methods.append(ClMethod(subscription["callback"], tu))
 
     if "timers" in cb_dict:
         for timer in cb_dict["timers"]:
-            timers.append(ClTimer(timer))
+            timers.append(ClTimer(timer, tu))
+            if "callback" in timer:
+                methods.append(ClMethod(timer["callback"], tu))
 
     if "accesses" in cb_dict:
         for access_type in cb_dict["accesses"]:
             for access in cb_dict["accesses"][access_type]:
-                accesses.append(ClMemberRef(access))
+                accesses.append(ClMemberRef(access, tu))
+                if "method" in access["context"]:
+                    methods.append(ClMethod(access["context"]["method"], tu))
 
-    nodes = dictify(dedup(nodes))
-    pubs = dictify(dedup(pubs), key='member_id')
-    subs = dictify(dedup(subs), key='callback_id')
-    timers = dictify(dedup(timers), key='callback_id')
-    fields = dictify(dedup(fields))
-    methods = dictify(dedup(methods))
+    nodes = dedup(nodes)
+    pubs = dedup(pubs)
+    subs = dedup(subs)
+    timers = dedup(timers)
+    fields = dedup(fields)
+    methods = dedup(methods)
 
     return nodes, pubs, subs, timers, fields, methods, accesses
 
 
-def highlight(substr: str, text: str):
-    regex = r"(?<=\W)({substr})(?=\W)|^({substr})$"
-    return re.sub(regex.format(substr=substr), termcolor.colored(r"\1\2", 'magenta', attrs=['bold']), text)
-
-
-def prompt_user(file: str, cb: str, idf: str, text: str) -> Tuple[str, bool, bool]:
-    print('\n' * 5)
-    print(f"{file.rstrip('.cpp').rstrip('.hpp')}\n->{cb}:")
-    print(highlight(idf.split('::')[-1], text))
-    answer = input(f"{highlight(idf, idf)}\n"
-                   f"write (w), read (r), both (rw), ignore future (i) exit and save (q), undo (z), skip (Enter): ")
-    if answer not in ["", "r", "w", "rw", "q", "z", "i"]:
-        print(f"Invalid answer '{answer}', try again.")
-        answer = prompt_user(file, cb, idf, text)
-
-    if answer == 'i':
-        ignored_idfs.add(idf)
-    elif any(x in answer for x in ['r', 'w']):
-        ignored_idfs.discard(idf)
-
-    return answer, answer == "q", answer == "z"
-
-
-def main(cbs):
-    open_files = {}
-    cb_rw_dict = {}
-
-    jobs = []
-
-    for cb_id, cb_dict in cbs.items():
-        cb_rw_dict[cb_dict['qualified_name']] = {'reads': set(), 'writes': set()}
-        for ref_dict in cb_dict['member_refs']:
-            if ref_dict['file'] not in open_files:
-                with open(ref_dict['file'], 'r') as f:
-                    open_files[ref_dict['file']] = f.readlines()
-
-            ln = ref_dict['start_line'] - 1
-            text = open_files[ref_dict['file']]
-            line = termcolor.colored(text[ln], None, "on_cyan")
-            lines = [*text[ln - 3:ln], line, *text[ln + 1:ln + 4]]
-            text = ''.join(lines)
-            jobs.append((ref_dict['file'], cb_dict['qualified_name'], ref_dict['qualified_name'], text))
-
-    i = 0
-    do_undo = False
-    while i < len(jobs):
-        file, cb, idf, text = jobs[i]
-
-        if do_undo:
-            ignored_idfs.discard(idf)
-            cb_rw_dict[cb]['reads'].discard(idf)
-            cb_rw_dict[cb]['writes'].discard(idf)
-            do_undo = False
-
-        if idf in ignored_idfs:
-            print("Ignoring", idf)
-            i += 1
-            continue
-
-        if idf in cb_rw_dict[cb]['reads'] and idf in cb_rw_dict[cb]['writes']:
-            print(f"{idf} is already written to and read from in {cb}, skipping.")
-            i += 1
-            continue
-
-        classification, answ_quit, answ_undo = prompt_user(file, cb, idf, text)
-
-        if answ_quit:
-            del cb_rw_dict[file][cb]
-            break
-        elif answ_undo:
-            i -= 1
-            do_undo = True
-            continue
-
-        if 'r' in classification:
-            cb_rw_dict[cb]['reads'].add(idf)
-        if 'w' in classification:
-            cb_rw_dict[cb]['writes'].add(idf)
-        if not any(x in classification for x in ['r', 'w']):
-            print(f"Ignoring occurences of {idf} in cb.")
-
-        i += 1
-
-    with open("deps.json", "w") as f:
-        json.dump(cb_rw_dict, f, cls=SetEncoder)
-
-    print("Done.")
-
-
 def process_clang_output(directory=IN_DIR):
-    clang_context = ClContext()
+    all_tus = set()
+    all_nodes = set()
+    all_pubs = set()
+    all_subs = set()
+    all_timers = set()
+    all_fields = set()
+    all_methods = set()
+    all_accesses = []
+    all_deps = {}
+    all_publications = {}
 
     for filename in os.listdir(IN_DIR):
         source_filename = SRC_FILE_NAME(filename)
         print(f"Processing {source_filename}")
+
         with open(os.path.join(IN_DIR, filename), "r") as f:
             cb_dict = json.load(f)
             if cb_dict is None:
                 print(f"  [WARN ] Empty tool output detected in {filename}")
                 continue
 
-            nodes, pubs, subs, timers, fields, methods, accesses = definitions_from_json(cb_dict)
+            tu = ClTranslationUnit(source_filename)
+            all_tus.add(tu)
+
+            nodes, pubs, subs, timers, fields, methods, accesses = definitions_from_json(cb_dict, tu)
             deps, publications = find_data_deps(accesses)
 
-            tu = ClTranslationUnit(deps, publications, nodes, pubs, subs, timers, fields, methods, accesses)
-            clang_context.translation_units[source_filename] = tu
+            all_nodes.update(nodes)
+            all_pubs.update(pubs)
+            all_subs.update(subs)
+            all_timers.update(timers)
+            all_fields.update(fields)
+            all_methods.update(methods)
+            all_accesses += accesses
+            all_deps.update(deps)
+            all_publications.update(publications)
+
+    clang_context = ClContext(all_tus, all_nodes, all_pubs, all_subs, all_timers, all_fields, all_methods, all_accesses,
+                              all_deps, all_publications)
 
     return clang_context
 
