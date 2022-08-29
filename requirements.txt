@@ -4,4 +4,5 @@ matplotlib
 pyvis
 graphviz
 ruamel.yaml
-fuzzywuzzy
+blist @ git+https://github.com/mojomex/blist.git@47724cbc4137ddfb685f9711e950fb82587bf971
+

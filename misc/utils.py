@@ -73,7 +73,7 @@ def cached(name, function, file_deps: List[str]):
 
     if pkl_time > dep_time:
         with open(pkl_filename, "rb") as f:
-            print(f"[CACHE] Found up-to-date cache entry for {name}, loading.")
+            print(f"[CACHE] Found up-to-date cache entry ({pkl_filename}) for {name}, loading.")
             return pickle.load(f)
 
     if os.path.exists(pkl_filename):

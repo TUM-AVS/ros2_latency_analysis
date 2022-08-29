@@ -1,100 +1,108 @@
+from collections import namedtuple, UserList
 from dataclasses import dataclass, field
-from functools import cached_property
-from typing import List, Dict
-
-import pandas as pd
-from tqdm.notebook import tqdm
+from typing import List, Dict, Optional, Set, TypeVar, Generic, Iterable
+import bisect
 
 from tracetools_analysis.processor.ros2 import Ros2Handler
-from tracetools_analysis.utils.ros2 import Ros2DataModelUtil
 
-from .utils import list_to_dict, df_to_type_list
+from .utils import df_to_type_list
+
+IdxItemType = TypeVar("IdxItemType")
+Timestamp = namedtuple("Timestamp", ["timestamp"])
+
+
+class Index(Generic[IdxItemType]):
+    def __init__(self, items: Iterable[IdxItemType], **idx_fields):
+        sort_key = lambda item: item.timestamp
+
+        self.__items = list(items)
+        self.__items.sort(key=sort_key)
+        self.__indices = {}
+
+        for idx_name, is_multi in idx_fields.items():
+            index = {}
+            self.__indices[idx_name] = index
+
+            if is_multi:
+                for item in self.__items:
+                    key = getattr(item, idx_name)
+                    if key not in index:
+                        index[key] = []
+                    index[key].append(item)  # Also sorted since items are processed in order and only filtered here
+            else:
+                for item in self.__items:
+                    key = getattr(item, idx_name)
+                    if key in index:
+                        print(repr(ValueError(f"Duplicate key: {idx_name}={key}; old={index[key]}; new={item}")))
+                    index[key] = item
+
+    def __iter__(self):
+        return iter(self.__items)
+
+    def __len__(self):
+        return len(self.__items)
+
+    def __getattr__(self, item: str):
+        if not item.startswith("by_"):
+            return AttributeError(
+                    f"Not found in index: '{item}'. Index lookups must be of the shape 'by_<index_field>'.")
+
+        return self.__indices[item.removeprefix("by_")]
+
+    def __getstate__(self):
+        return vars(self)
+
+    def __setstate__(self, state):
+        vars(self).update(state)
 
 
 @dataclass
 class TrContext:
-    nodes: Dict[int, 'TrNode']
-    publishers: Dict[int, 'TrPublisher']
-    subscriptions: Dict[int, 'TrSubscription']
-    timers: Dict[int, 'TrTimer']
-    timer_node_links: Dict[int, 'TrTimerNodeLink']
-    subscription_objects: Dict[int, 'TrSubscriptionObject']
-    callback_objects: Dict[int, 'TrCallbackObject']
-    callback_symbols: Dict[int, 'TrCallbackSymbol']
-    publish_instances: List['TrPublishInstance']
-    callback_instances: List['TrCallbackInstance']
-    topics: Dict[str, 'TrTopic']
+    nodes: Index['TrNode']
+    publishers: Index['TrPublisher']
+    subscriptions: Index['TrSubscription']
+    timers: Index['TrTimer']
+    timer_node_links: Index['TrTimerNodeLink']
+    subscription_objects: Index['TrSubscriptionObject']
+    callback_objects: Index['TrCallbackObject']
+    callback_symbols: Index['TrCallbackSymbol']
+    publish_instances: Index['TrPublishInstance']
+    callback_instances: Index['TrCallbackInstance']
+    topics: Index['TrTopic']
 
-    util: Ros2DataModelUtil | None
-    handler: Ros2Handler | None
-
-    def __init__(self, util: Ros2DataModelUtil, handler: Ros2Handler):
-        self.util = util
-        self.handler = handler
-
+    def __init__(self, handler: Ros2Handler):
         print("[TrContext] Processing ROS 2 objects from traces...")
 
-        self.nodes = list_to_dict(df_to_type_list(handler.data.nodes, TrNode, _c=self))
-        print(f" ├─ Processed {len(self.nodes):<8d} nodes")
-        self.publishers = list_to_dict(df_to_type_list(handler.data.rcl_publishers, TrPublisher, _c=self))
-        print(f" ├─ Processed {len(self.publishers):<8d} publishers")
-        self.subscriptions = list_to_dict(df_to_type_list(handler.data.rcl_subscriptions, TrSubscription, _c=self))
-        print(f" ├─ Processed {len(self.subscriptions):<8d} subscriptions")
-        self.timers = list_to_dict(df_to_type_list(handler.data.timers, TrTimer, _c=self))
-        print(f" ├─ Processed {len(self.timers):<8d} timers")
-        self.timer_node_links = list_to_dict(df_to_type_list(handler.data.timer_node_links, TrTimerNodeLink))
-        print(f" ├─ Processed {len(self.timer_node_links):<8d} timer-node links")
-        self.subscription_objects = list_to_dict(
-            df_to_type_list(handler.data.subscription_objects, TrSubscriptionObject, _c=self))
-        print(f" ├─ Processed {len(self.subscription_objects):<8d} subscription objects")
-        self.callback_objects = list_to_dict(df_to_type_list(handler.data.callback_objects, TrCallbackObject, _c=self))
-        print(f" ├─ Processed {len(self.callback_objects):<8d} callback objects")
-        self.callback_symbols = list_to_dict(df_to_type_list(handler.data.callback_symbols, TrCallbackSymbol, _c=self))
-        print(f" ├─ Processed {len(self.callback_symbols):<8d} callback symbols")
-        self.publish_instances = df_to_type_list(handler.data.rcl_publish_instances, TrPublishInstance, _c=self)
-        print(f" ├─ Processed {len(self.publish_instances):<8d} publish instances")
-        self.callback_instances = df_to_type_list(handler.data.callback_instances, TrCallbackInstance, _c=self)
-        print(f" ├─ Processed {len(self.callback_instances):<8d} callback instances")
+        self.nodes = Index(df_to_type_list(handler.data.nodes, TrNode, _c=self),
+                           id=False)
+        self.publishers = Index(df_to_type_list(handler.data.rcl_publishers, TrPublisher, _c=self),
+                                id=False, node_handle=True, topic_name=True)
+        self.subscriptions = Index(df_to_type_list(handler.data.rcl_subscriptions, TrSubscription, _c=self),
+                                   id=False, node_handle=True, topic_name=True)
+        self.timers = Index(df_to_type_list(handler.data.timers, TrTimer, _c=self),
+                            id=False)
+        self.timer_node_links = Index(df_to_type_list(handler.data.timer_node_links, TrTimerNodeLink),
+                                      id=False, node_handle=True)
+        self.subscription_objects = Index(
+                df_to_type_list(handler.data.subscription_objects, TrSubscriptionObject, _c=self),
+                id=False, subscription_handle=False)
+        self.callback_objects = Index(df_to_type_list(handler.data.callback_objects, TrCallbackObject, _c=self),
+                                      id=False, callback_object=False)
+        self.callback_symbols = Index(df_to_type_list(handler.data.callback_symbols, TrCallbackSymbol, _c=self),
+                                      id=False)
+        self.publish_instances = Index(df_to_type_list(handler.data.rcl_publish_instances, TrPublishInstance, _c=self,
+                                                       mappers={"timestamp": lambda t: t * 1e-9}),
+                                       publisher_handle=True)
+        self.callback_instances = Index(df_to_type_list(handler.data.callback_instances, TrCallbackInstance, _c=self,
+                                                        mappers={"timestamp": lambda t: t.timestamp(),
+                                                                 "duration": lambda d: d.total_seconds()}),
+                                        callback_object=True)
 
-        _unique_topic_names = {*(pub.topic_name for pub in self.publishers.values()),
-                               *(sub.topic_name for sub in self.subscriptions.values())}
-        self.topics = list_to_dict(map(lambda name: TrTopic(name=name, _c=self), _unique_topic_names), key="name")
-        print(f" └─ Processed {len(self.topics):<8d} topics\n")
+        _unique_topic_names = {*(pub.topic_name for pub in self.publishers),
+                               *(sub.topic_name for sub in self.subscriptions)}
 
-        print("[TrContext] Caching dynamic properties...")
-
-        p = tqdm(desc=" ├─ Processing nodes", total=len(self.nodes.values()))
-        [(o.path, o.publishers, o.subscriptions, o.timers, p.update()) for o in self.nodes.values()]
-        print(" ├─ Cached node properties")
-        p = tqdm(desc=" ├─ Processing publishers", total=len(self.publishers.values()))
-        [(o.instances, o.subscriptions, p.update()) for o in self.publishers.values()]
-        print(" ├─ Cached publisher properties")
-        p = tqdm(desc=" ├─ Processing subscriptions", total=len(self.subscriptions.values()))
-        [(o.publishers, o.subscription_objects, p.update()) for o in self.subscriptions.values()]
-        print(" ├─ Cached subscription properties")
-        p = tqdm(desc=" ├─ Processing timers", total=len(self.timers.values()))
-        [(o.nodes, p.update()) for o in self.timers.values()]
-        print(" ├─ Cached timer properties")
-        p = tqdm(desc=" ├─ Processing CB objects", total=len(self.callback_objects.values()))
-        [(o.callback_instances, o.owner, p.update()) for o in self.callback_objects.values()]
-        print(" ├─ Cached callback object properties")
-        p = tqdm(desc=" ├─ Processing CB symbols", total=len(self.callback_symbols.values()))
-        [(o.callback_objs, p.update()) for o in self.callback_symbols.values()]
-        print(" ├─ Cached callback symbol properties")
-        p = tqdm(desc=" ├─ Processing topics", total=len(self.topics.values()))
-        [(o.publishers, o.subscriptions, p.update()) for o in self.topics.values()]
-        print(" └─ Cached topic properties\n")
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        del state["util"]
-        del state["handler"]
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self.util = None
-        self.handler = None
+        self.topics = Index((TrTopic(name=name, _c=self) for name in _unique_topic_names),
+                            name=False)
 
     def __repr__(self):
         return f"TrContext"
@@ -110,25 +118,29 @@ class TrNode:
     namespace: str
     _c: TrContext = field(repr=False)
 
-    @cached_property
+    @property
     def path(self) -> str:
         return '/'.join((self.namespace, self.name)).replace('//', '/')
 
-    @cached_property
+    @property
     def publishers(self) -> List['TrPublisher']:
-        return list(filter(lambda pub: pub.node_handle == self.id, self._c.publishers.values()))
+        return self._c.publishers.by_node_handle.get(self.id) or []
 
-    @cached_property
+    @property
     def subscriptions(self) -> List['TrSubscription']:
-        return list(filter(lambda sub: sub.node_handle == self.id, self._c.subscriptions.values()))
+        return self._c.subscriptions.by_node_handle.get(self.id) or []
 
-    @cached_property
+    @property
     def timers(self) -> List['TrTimer']:
-        links = [link.id for link in self._c.timer_node_links.values() if link.node_handle == self.id]
-        return list(filter(lambda timer: timer.id in links, self._c.timers.values()))
+        links = self._c.timer_node_links.by_node_handle.get(self.id) or []
+        timers = [self._c.timers.by_id.get(link.id) for link in links]
+        return [t for t in timers if t is not None]
 
     def __hash__(self):
         return hash(self.id)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass
@@ -142,23 +154,26 @@ class TrPublisher:
     _c: TrContext = field(repr=False)
 
     @property
-    def node(self) -> 'TrNode':
-        return self._c.nodes[self.node_handle]
-
-    @cached_property
-    def subscriptions(self) -> List['TrSubscription']:
-        return list(filter(lambda sub: sub.topic_name == self.topic_name, self._c.subscriptions.values()))
-
-    @cached_property
-    def instances(self) -> List['TrPublishInstance']:
-        return list(filter(lambda inst: inst.publisher_handle == self.id, self._c.publish_instances))
+    def node(self) -> Optional['TrNode']:
+        return self._c.nodes.by_id.get(self.node_handle)
 
     @property
-    def topic(self) -> 'TrTopic':
-        return self._c.topics[self.topic_name]
+    def subscriptions(self) -> List['TrSubscription']:
+        return self._c.subscriptions.by_topic_name.get(self.topic_name) or []
+
+    @property
+    def instances(self) -> List['TrPublishInstance']:
+        return self._c.publish_instances.by_publisher_handle.get(self.id) or []
+
+    @property
+    def topic(self) -> Optional['TrTopic']:
+        return self._c.topics.by_name.get(self.topic_name)
 
     def __hash__(self):
         return hash(self.id)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass
@@ -172,24 +187,26 @@ class TrSubscription:
     _c: TrContext = field(repr=False)
 
     @property
-    def node(self) -> 'TrNode':
-        return self._c.nodes[self.node_handle]
-
-    @cached_property
-    def publishers(self) -> List['TrPublisher']:
-        return list(filter(lambda pub: pub.topic_name == self.topic_name, self._c.publishers.values()))
-
-    @cached_property
-    def subscription_objects(self) -> List['TrSubscriptionObject']:
-        return list(
-                filter(lambda sub_obj: sub_obj.subscription_handle == self.id, self._c.subscription_objects.values()))
+    def node(self) -> Optional['TrNode']:
+        return self._c.nodes.by_id.get(self.node_handle)
 
     @property
-    def topic(self) -> 'TrTopic':
-        return self._c.topics[self.topic_name]
+    def publishers(self) -> List['TrPublisher']:
+        return self._c.publishers.by_topic_name.get(self.topic_name) or []
+
+    @property
+    def subscription_object(self) -> Optional['TrSubscriptionObject']:
+        return self._c.subscription_objects.by_subscription_handle.get(self.id)
+
+    @property
+    def topic(self) -> Optional['TrTopic']:
+        return self._c.topics.by_name.get(self.topic_name)
 
     def __hash__(self):
         return hash(self.id)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass
@@ -200,17 +217,22 @@ class TrTimer:
     tid: int
     _c: TrContext = field(repr=False)
 
-    @cached_property
-    def nodes(self) -> List['TrNode']:
-        links = [link.node_handle for link in self._c.timer_node_links.values() if link.id == self.id]
-        return list(filter(lambda node: node.id in links, self._c.nodes.values()))
+    @property
+    def node(self) -> Optional['TrNode']:
+        link = self._c.timer_node_links.by_id.get(self.id)
+        if link is None:
+            return None
+        return self._c.nodes.by_id.get(link.node_handle)
 
     @property
-    def callback_object(self) -> 'TrCallbackObject':
-        return self._c.callback_objects[self.id]
+    def callback_object(self) -> Optional['TrCallbackObject']:
+        return self._c.callback_objects.by_id.get(self.id)
 
     def __hash__(self):
         return hash(self.id)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass
@@ -219,24 +241,33 @@ class TrTimerNodeLink:
     timestamp: int
     node_handle: int
 
+    def __hash__(self):
+        return hash((self.id, self.node_handle))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
 
 @dataclass
 class TrSubscriptionObject:
-    id: int  # subscription
+    id: int
     timestamp: int
     subscription_handle: int
     _c: TrContext = field(repr=False)
 
     @property
-    def subscription(self) -> 'TrSubscription':
-        return self._c.subscriptions[self.subscription_handle]
+    def subscription(self) -> Optional['TrSubscription']:
+        return self._c.subscriptions.by_id.get(self.subscription_handle)
 
     @property
-    def callback_object(self) -> 'TrCallbackObject':
-        return self._c.callback_objects[self.id]
+    def callback_object(self) -> Optional['TrCallbackObject']:
+        return self._c.callback_objects.by_id.get(self.id)
 
     def __hash__(self):
         return hash((self.id, self.timestamp, self.subscription_handle))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass
@@ -246,61 +277,66 @@ class TrCallbackObject:
     callback_object: int
     _c: TrContext = field(repr=False)
 
-    @cached_property
+    @property
     def callback_instances(self) -> List['TrCallbackInstance']:
-        return list(filter(lambda inst: inst.callback_object == self.callback_object, self._c.callback_instances))
+        return self._c.callback_instances.by_callback_object.get(self.callback_object) or []
 
     @property
-    def callback_symbol(self) -> 'TrCallbackSymbol':
-        return self._c.callback_symbols[self.id]
+    def callback_symbol(self) -> Optional['TrCallbackSymbol']:
+        return self._c.callback_symbols.by_id.get(self.callback_object)
 
-    @cached_property
+    @property
     def owner(self):
-        if self.id in self._c.timers:
-            return self._c.timers[self.id]
-        if self.id in self._c.publishers:
-            return self._c.publishers[self.id]
-        if self.id in self._c.subscription_objects:
-            return self._c.subscription_objects[self.id]
-        if self.id in self._c.handler.data.services.index:
-            return 'Service'
-        if self.id in self._c.handler.data.clients.index:
-            return 'Client'
+        if self.id in self._c.timers.by_id:
+            return self._c.timers.by_id[self.id]
+        if self.id in self._c.publishers.by_id:
+            return self._c.publishers.by_id[self.id]
+        if self.id in self._c.subscription_objects.by_id:
+            return self._c.subscription_objects.by_id[self.id]
         return None
 
     def __hash__(self):
         return hash((self.id, self.timestamp, self.callback_object))
 
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
 
 @dataclass
 class TrPublishInstance:
     publisher_handle: int
-    timestamp: int
+    timestamp: float
     message: int
     _c: TrContext = field(repr=False)
 
     @property
-    def publisher(self) -> 'TrPublisher':
-        return self._c.publishers[self.publisher_handle]
+    def publisher(self) -> Optional['TrPublisher']:
+        return self._c.publishers.by_id.get(self.publisher_handle)
 
     def __hash__(self):
         return hash((self.publisher_handle, self.timestamp, self.message))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass
 class TrCallbackInstance:
     callback_object: int
-    timestamp: pd.Timestamp
-    duration: pd.Timedelta
+    timestamp: float
+    duration: float
     intra_process: bool
     _c: TrContext = field(repr=False)
 
     @property
-    def callback_obj(self) -> 'TrCallbackObject':
-        return self._c.callback_objects[self.callback_object]
+    def callback_obj(self) -> Optional['TrCallbackObject']:
+        return self._c.callback_objects.by_callback_object.get(self.callback_object)
 
     def __hash__(self):
         return hash((self.callback_object, self.timestamp, self.duration))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 @dataclass
@@ -310,12 +346,15 @@ class TrCallbackSymbol:
     symbol: str
     _c: TrContext = field(repr=False)
 
-    @cached_property
-    def callback_objs(self) -> List['TrCallbackObject']:
-        return list(filter(lambda cb_obj: cb_obj.callback_object == self.id, self._c.callback_objects.values()))
+    @property
+    def callback_obj(self) -> Optional['TrCallbackObject']:
+        return self._c.callback_objects.by_callback_object.get(self.id)
 
     def __hash__(self):
         return hash((self.id, self.timestamp, self.symbol))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 
 #######################################
@@ -326,14 +365,18 @@ class TrCallbackSymbol:
 class TrTopic:
     name: str
     _c: TrContext = field(repr=False)
+    timestamp: int = 0
 
-    @cached_property
+    @property
     def publishers(self) -> List['TrPublisher']:
-        return list(filter(lambda pub: pub.topic_name == self.name, self._c.publishers.values()))
+        return self._c.publishers.by_topic_name.get(self.name) or []
 
-    @cached_property
+    @property
     def subscriptions(self) -> List['TrSubscription']:
-        return list(filter(lambda sub: sub.topic_name == self.name, self._c.subscriptions.values()))
+        return self._c.subscriptions.by_topic_name.get(self.name) or []
 
     def __hash__(self):
         return hash(self.name)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
