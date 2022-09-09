@@ -1,0 +1,76 @@
+hosts:
+#  - name: "awsim"
+#    connection: "edgar@edgar-hil-x86"
+#    tasks:
+#      awsim:
+#        start_commands:
+#          - "cd ~/edgar/AWSIM_binary_1080"
+#          - "source ~/edgar/autoware/install/setup.bash"
+#          - "export DISPLAY=:1"
+#          - "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
+#          - "./AWSIM.x86_64"
+#          #- "./AWSIM.x86_64 -screen-fullscreen 1"
+#        start_deps:
+#          - tracing
+#          - autoware
+
+  - name: "runner"
+    connection: "edgar@edgar-hil-x86"
+    tasks:
+      autoware:
+        start_commands:
+          - "cd ~/edgar/autoware"
+          - "source install/setup.bash"
+          - "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
+          - "export DISPLAY=:1"
+          - "out_dir=scenario_runner_logs"
+          - "rm -rf $out_dir"
+          - "mkdir $out_dir"
+          - "uname -a > $out_dir/uname.log"
+          - "env > $out_dir/env.log"
+          - "lscpu > $out_dir/lscpu.log"
+          - "git rev-parse HEAD > $out_dir/commit_id.log"
+          - "vcs status -n > $out_dir/vcs_status.log"
+          - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit | tee $out_dir/autoware.log"
+        artifact_location: "~/edgar/autoware/scenario_runner_logs"
+        start_deps:
+          - tracing
+      tracing:
+        start_commands:
+          - "cd ~/edgar/autoware"
+          - "source install/setup.bash"
+          - "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
+          - "rm -rf ~/.ros/tracing/scenario-trace"
+          - "ros2 trace -s scenario-trace -k"
+        artifact_location: "~/.ros/tracing/scenario-trace"
+      messages:
+        start_commands:
+          - "cd ~/edgar/max/ma-core2core/message_size"
+          - "source ~/edgar/max/ros2multitopic/install/setup.bash"
+          - "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
+          - "./record.bash"
+        artifact_location: "~/edgar/max/ma-core2core/message_size/result.h5"
+        start_deps:
+          - autoware
+          #- awsim
+      perf:
+        start_commands:
+          - "cd ~/edgar/max/ma-core2core/perf"
+          - "./record.bash"
+          - "sudo chown -R $USER:$USER results"
+        artifact_location: "~/edgar/max/ma-core2core/perf/results"
+        start_deps:
+          - autoware
+          #- awsim
+          - messages
+      rosbag:
+        start_commands:
+          - "cd ~/edgar/autoware"
+          - "source install/setup.bash"
+          - "ros2 bag play assets/sample-rosbag"
+        start_deps:
+          - autoware
+          #- awsim
+          - messages
+          - perf
+          - tracing
