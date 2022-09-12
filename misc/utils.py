@@ -8,6 +8,19 @@ import pickle
 import time
 from typing import List
 
+from IPython.core.magic import (register_cell_magic, needs_local_scope)
+from IPython import get_ipython
+
+
+@register_cell_magic
+@needs_local_scope
+def skip_if_false(line, cell, local_ns=None):
+    condition_var = eval(line, None, local_ns)
+    if condition_var:
+        result = get_ipython().run_cell(cell)
+        return None
+    return f"Skipped (evaluated {line} to False)"
+
 
 def left_abbreviate(string, limit=120):
     return string if len(string) <= limit else f"...{string[:limit - 3]}"
@@ -43,6 +56,14 @@ class ProgressPrinter:
 def stable_hash(obj):
     return hashlib.md5(json.dumps(obj).encode("utf-8")).hexdigest()[:10]
 
+
+def parse_as(type, string):
+    if any(issubclass(type, type2) for type2 in (str, bool, float, int)):
+        return type(string)
+    if issubclass(type, list) or issubclass(type, dict) or issubclass(type, set):
+        val = json.loads(string)
+        return type(val)
+    raise ValueError(f"Unknown type {type.__name__}")
 
 def cached(name, function, file_deps: List[str]):
     if not os.path.isdir("cache"):
