@@ -183,7 +183,7 @@ class Task:
             logger.error(f"{self}: pipe closed")
             return
         for line in new_lines:
-            logger.info(f"[{self}] {line.rstrip()}")
+            logger.info(f"[{self.name}] {line.rstrip()}")
         self._process_line_actions(new_lines)
 
     def _process_line_actions(self, new_lines):
@@ -211,6 +211,7 @@ class Task:
         def action(lines: list):
             while lines and (line := lines.pop(0)):
                 if line_content in line:
+                    logger.info(f"[{self.name}] found line containing '{line_content}'")
                     return lines, True
             return [], False
 
@@ -229,7 +230,7 @@ class Task:
 
     def _do_action(self, callback):
         def action(lines: list):
-            print("action")
+            logger.debug(f"[{self.name}] action")
             callback()
             return [], True
 
@@ -241,7 +242,6 @@ class Task:
         self._state = TaskState.STARTING
         logger.info(f"{self}: starting...")
         self.shell.stdin.write('\n'.join(self.commands) + '\n')
-        logger.info(f"{self}: started")
 
     def stop(self):
         if self._state.value >= TaskState.STOPPED.value:
@@ -346,11 +346,8 @@ def run(scenario_path, config_path, env):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run Autoware in a predefined scenario, with tracing.')
-    parser.add_argument('scenario_name', metavar='SCENARIO_NAME', type=str,
-                        help='Name of the scenario. Scenarios are found in ./scenarios/, scenario names are the names '
-                             'of the subfolders.')
-    parser.add_argument('--config', '-c', metavar="CONFIG_PATH", type=str, default="config/scenario_runner.yml",
-                        help='Configuration file (.yml). Default: ./config/scenario_runner.yml')
+    parser.add_argument('--config', '-c', metavar="CONFIG_PATH", type=str, default="config/aw_replay.yml",
+                        help='Configuration file (.yml). Default: ./config/aw_replay.yml')
 
     parser.add_argument('env_vars', type=str, nargs='*', default=[],
                         help='Environment variables to pass to runners. In the format ENV_VAR_1:="value 1" ENV_VAR_2:=...')
@@ -373,6 +370,5 @@ if __name__ == "__main__":
 
     env = dict(map(parse_env_var, args.env_vars))
 
-    scenario_path = os.path.join("scenarios", args.scenario_name)
-    env["ROS_DOMAIN_ID"] = 62
+    env["ROS_DOMAIN_ID"] = 34
     run(scenario_path, args.config, env)

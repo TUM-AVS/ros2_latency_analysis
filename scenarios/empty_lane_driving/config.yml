@@ -1,6 +1,0 @@
-name: "Empty Lane Driving"
-desc: "Only lane driving, no other cars or pedestrians."
-end_condition:
-  seconds_after_engage: 10.0
-rosbag: "rosbag/"
-poses: "poses.sh"

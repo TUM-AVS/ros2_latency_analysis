@@ -15,13 +15,13 @@ hosts:
 #          - autoware
 
   - name: "runner"
-    connection: "edgar@edgar-hil-x86"
+    connection: "adlink@edgar-sim-stable"
     tasks:
       autoware:
         start_commands:
           - "cd ~/edgar/autoware"
           - "source install/setup.bash"
-          - "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
+          #- "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
           - "export DISPLAY=:1"
           - "out_dir=scenario_runner_logs"
           - "rm -rf $out_dir"
@@ -29,9 +29,9 @@ hosts:
           - "uname -a > $out_dir/uname.log"
           - "env > $out_dir/env.log"
           - "lscpu > $out_dir/lscpu.log"
-          - "git rev-parse HEAD > $out_dir/commit_id.log"
+          - "vcs custom -n --git --args log --oneline -n 1 > $out_dir/head_commit.log"
           - "vcs status -n > $out_dir/vcs_status.log"
-          - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit | tee $out_dir/autoware.log"
+          - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false | tee $out_dir/autoware.log"
         artifact_location: "~/edgar/autoware/scenario_runner_logs"
         start_deps:
           - tracing
@@ -39,7 +39,7 @@ hosts:
         start_commands:
           - "cd ~/edgar/autoware"
           - "source install/setup.bash"
-          - "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
+          #- "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
           - "rm -rf ~/.ros/tracing/scenario-trace"
           - "ros2 trace -s scenario-trace -k"
         artifact_location: "~/.ros/tracing/scenario-trace"
@@ -47,22 +47,12 @@ hosts:
         start_commands:
           - "cd ~/edgar/max/ma-core2core/message_size"
           - "source ~/edgar/max/ros2multitopic/install/setup.bash"
-          - "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
+          #- "export CYCLONEDDS_URI=file://$HOME/edgar/max/cyclone-config.xml"
           - "./record.bash"
         artifact_location: "~/edgar/max/ma-core2core/message_size/result.h5"
         start_deps:
           - autoware
           #- awsim
-      perf:
-        start_commands:
-          - "cd ~/edgar/max/ma-core2core/perf"
-          - "./record.bash"
-          - "sudo chown -R $USER:$USER results"
-        artifact_location: "~/edgar/max/ma-core2core/perf/results"
-        start_deps:
-          - autoware
-          #- awsim
-          - messages
       rosbag:
         start_commands:
           - "cd ~/edgar/autoware"
