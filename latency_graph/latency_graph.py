@@ -124,8 +124,8 @@ def _get_cb_topic_deps(nodes_to_cbs: Dict[TrNode, Set[TrCallbackObject]]):
             elif cb.owner is None:
                 continue
             else:
-                raise RuntimeError(
-                        f"Callback owners other than timers/subscriptions cannot be handled: {cb.owner}")
+                print(f" [WARN] Callback owners other than timers/subscriptions cannot be handled: {cb.owner}")
+                continue
 
             for topic in dep_topics:
                 if topic not in cbs_subbed_to_topic:
