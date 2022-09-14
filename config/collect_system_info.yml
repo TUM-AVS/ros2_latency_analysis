@@ -1,0 +1,15 @@
+tasks:
+  collect_sysinfo:
+    start_commands:
+      - "out_dir=~/edgar/scenario_runner_logs"
+      - "rm -rf $out_dir"
+      - "mkdir $out_dir"
+      - "uname -a > $out_dir/uname.log"
+      - "env > $out_dir/env.log"
+      - "lscpu > $out_dir/lscpu.log"
+      - "lspci -vvv > $out_dir/lspci.log"
+      - "lsmod > $out_dir/lsmod.log"
+      - "cd ~/edgar/autoware"
+      - "vcs custom -n --git --args log --oneline -n 1 > $out_dir/head_commit.log"
+      - "vcs status -n > $out_dir/vcs_status.log"
+    artifact_location: "~/edgar/scenario_runner_logs"

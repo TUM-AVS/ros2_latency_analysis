@@ -4,12 +4,17 @@ import argparse
 import functools
 import os.path
 import random
+import traceback
+
+import psutil
+import shutil
 import subprocess
 import sys
 import time
 import signal
 from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
 
 import ruamel.yaml
 import logging
@@ -35,25 +40,12 @@ class RunnerState(Enum):
     STOPPED = 4
 
 
-class Scenario:
-    def __init__(self, cfg_dict):
-        self.name = cfg_dict["name"]
-        self.desc = cfg_dict["desc"]
-        self.end_condition = cfg_dict["end_condition"]
-        self.rosbag = cfg_dict.get("rosbag")
-        self.poses = cfg_dict.get("poses")
-
-        logger.info(f"{self} loaded")
-
-    def __str__(self):
-        name = self.name
-        desc = self.desc
-        return f"Scenario({name=}, {desc=})"
-
-
 class TaskManager:
-    def __init__(self, tasks, start_deps):
+    def __init__(self, cfg_name, tasks, start_deps, runtime_s):
         self.tasks = tasks
+        self.cfg_name = cfg_name
+        self.logger = logging.getLogger(cfg_name)
+        self.runtime_s = runtime_s
         self._state = RunnerState.STARTUP
         self.t_started = None
 
@@ -64,9 +56,9 @@ class TaskManager:
                          t not in self.start_order and all(dep in self.start_order for dep in start_deps[t])]
             self.start_order += can_start
 
-    def run(self, scenario_name):
+    def run(self):
         currently_starting = None
-        logger.info(f"[TaskManager] STARTUP")
+        self.logger.info("STARTUP")
         while self._state == RunnerState.STARTUP:
             for task_name, task in self.tasks.items():
                 task.poll()
@@ -79,111 +71,113 @@ class TaskManager:
                     self._state = RunnerState.RUNNING
 
         self.t_started = datetime.now()
-        logger.info(f"[TaskManager] RUNNING")
+        if self.runtime_s is None:
+            runtime_str = "until all tasks terminate (no runtime given in config)"
+        else:
+            runtime_str = f"for {self.runtime_s:.1f}s"
+        self.logger.info(f"RUNNING {runtime_str}")
+        all_terminated = False
         while self._state == RunnerState.RUNNING:
             for task in self.tasks.values():
                 task.poll()
 
-            if datetime.now() - self.t_started > timedelta(seconds=30):
+            all_terminated = all(t.state().value >= TaskState.STOPPED.value for t in self.tasks.values())
+            runtime_over = self.runtime_s is not None and datetime.now() - self.t_started > timedelta(
+                seconds=self.runtime_s)
+            if all_terminated or runtime_over:
                 self._state = RunnerState.TEARDOWN
 
-        logger.info(f"[TaskManager] TEARDOWN")
+        self.logger.info(f"TEARDOWN: {'all tasks finished' if all_terminated else 'runtime is over'}")
+        pkill_procs = [subprocess.Popen(["pkill", "-f", pattern]) for pattern in ("ros", "autoware", "http.server")]
+
         while self._state == RunnerState.TEARDOWN:
             for task in self.tasks.values():
                 try:
                     task.poll()
                     task.stop()
-                except:
-                    pass
+                except Exception:
+                    traceback.print_exc()
 
             time.sleep(.1)
             if all(t.state().value >= TaskState.STOPPED.value for t in self.tasks.values()):
                 self._state = RunnerState.STOPPED
 
-        logger.info(f"[TaskManager] STOPPED")
-        runs_dir = f"runs/{scenario_name}"
-        n_runs = len(os.listdir(runs_dir)) if os.path.isdir(runs_dir) else 0
-        run_dir = f"runs/{scenario_name}/{n_runs + 1:03d}"
-        os.makedirs(run_dir, exist_ok=True)
+        # Wait for pkill to finish completely
+        while any(p.poll() is None for p in pkill_procs):
+            time.sleep(.1)
+
+        self.logger.info("STOPPED")
+
+        run_dir = f"runs/{self.cfg_name}"
+        self.logger.info(f"Copying artifacts to {os.path.abspath(run_dir)}")
+        shutil.rmtree(run_dir, ignore_errors=True)
+        os.makedirs(run_dir)
         for task in self.tasks.values():
             task.copy_artifacts(run_dir)
-        logger.info(f"[TaskManager] DONE")
+        self.logger.info("DONE")
 
 
-def parse_tasks(cfg_dict, env_vars):
+def parse_config(cfg_name, cfg_dict, env_vars):
     tasks = {}
     start_deps = {}
 
-    for host in cfg_dict["hosts"]:
-        if "connection" in host:
-            connection = host["connection"]
+    for task_name, task_dict in cfg_dict["tasks"].items():
+        if "start_deps" in task_dict:
+            task_deps = task_dict["start_deps"]
+            del task_dict["start_deps"]
         else:
-            connection = None
+            task_deps = []
 
-        for task_name, task_dict in host["tasks"].items():
-            if "start_deps" in task_dict:
-                task_deps = task_dict["start_deps"]
-                del task_dict["start_deps"]
-            else:
-                task_deps = []
-            task = TASK_MAP[task_name](task_name, task_dict, connection, env_vars)
-            start_deps[task_name] = task_deps
-            tasks[task_name] = task
+        task_class = TASK_MAP.get(task_name) or Task
+        task = task_class(task_name, task_dict, env_vars)
+        start_deps[task_name] = task_deps
+        tasks[task_name] = task
 
-    return TaskManager(tasks, start_deps)
+    runtime_s = cfg_dict.get("runtime_s") or None
+    if runtime_s is not None:
+        runtime_s = float(runtime_s)
+
+    return TaskManager(cfg_name, tasks, start_deps, runtime_s)
 
 
 class Task:
-    def __init__(self, name, cfg_dict, connection, env_vars):
+    def __init__(self, name, cfg_dict, env_vars):
         self.name = name
+        self.logger = logging.getLogger(self.name)
         self.commands = cfg_dict["start_commands"]
-        self.commands.append("exit")
-        self.connection = connection
         self.artifacts_loc = cfg_dict["artifact_location"] if "artifact_location" in cfg_dict else None
-        logger.debug(f"{self}: connecting to shell...")
+        if self.artifacts_loc is not None:
+            self.artifacts_loc = os.path.expanduser(os.path.expandvars(self.artifacts_loc))
+        self.logger.debug("connecting to shell...")
 
-        if connection:
-            shell_command = ["ssh", connection, "/bin/bash"]
-        else:
-            shell_command = ["/bin/bash"]
-
-        self.shell = subprocess.Popen(shell_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
-                                      bufsize=1,
-                                      universal_newlines=True)
-        os.set_blocking(self.shell.stdout.fileno(), False)
-        logger.debug(f"{self}: shell connected")
-
-        for var_name, value in env_vars.items():
-            self.shell.stdin.write(f'export {var_name}="{value}"\n')
-
-        logger.debug(f"{self}: exported environment vars")
+        self.shell = None
+        self.env = env_vars
         self._state = TaskState.INITIALIZED
         self._line_actions = []
 
     def copy_artifacts(self, target_dir):
+        self.logger.debug(f"Copy artifacts called for {target_dir}")
         if not self.artifacts_loc:
             return 0
 
         task_dir = os.path.join(target_dir, self.name)
         os.makedirs(task_dir)
 
-        if self.connection:
-            logger.info(f"[{self}] Copying {self.connection}:{self.artifacts_loc} to {task_dir}")
-            scp = subprocess.Popen(["scp", "-r", f"{self.connection}:{self.artifacts_loc}", task_dir])
-            return scp.wait(60)
-
-        logger.info(f"[{self}] Copying {self.artifacts_loc} to {task_dir}")
+        self.logger.info(f"Copying {self.artifacts_loc} to {task_dir}")
         cp = subprocess.Popen(["cp", "-r", self.artifacts_loc, task_dir])
         return cp.wait(60)
 
     def poll(self):
+        if not self.shell:
+            return
+
         try:
             new_lines = self.shell.stdout.readlines()
         except Exception:
-            logger.error(f"{self}: pipe closed")
+            self.logger.error(f"pipe closed")
             return
         for line in new_lines:
-            logger.info(f"[{self.name}] {line.rstrip()}")
+            self.logger.info(f"[OUT] {line.rstrip()}")
         self._process_line_actions(new_lines)
 
     def _process_line_actions(self, new_lines):
@@ -196,6 +190,9 @@ class Task:
                 self._line_actions = self._line_actions[1:]
 
     def state(self):
+        if not self.shell:
+            return self._state
+
         shell_status = self.shell.poll()
 
         if shell_status is None:  # running
@@ -211,7 +208,7 @@ class Task:
         def action(lines: list):
             while lines and (line := lines.pop(0)):
                 if line_content in line:
-                    logger.info(f"[{self.name}] found line containing '{line_content}'")
+                    self.logger.info(f"found line containing '{line_content}'")
                     return lines, True
             return [], False
 
@@ -228,9 +225,12 @@ class Task:
 
         self._line_actions.append(action)
 
+    def _set_started(self):
+        self.logger.info("ready")
+        self._state = TaskState.RUNNING
+
     def _do_action(self, callback):
         def action(lines: list):
-            logger.debug(f"[{self.name}] action")
             callback()
             return [], True
 
@@ -240,18 +240,34 @@ class Task:
         if self.state() != TaskState.INITIALIZED:
             return True
         self._state = TaskState.STARTING
-        logger.info(f"{self}: starting...")
-        self.shell.stdin.write('\n'.join(self.commands) + '\n')
+        self.logger.info("starting...")
+
+        env_commands = [f"export {k}={v}" for k, v in self.env.items()]
+        command_str = '; '.join(env_commands + self.commands)
+        self.shell = subprocess.Popen(["/bin/bash", "-c", command_str],
+                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                      text=True,
+                                      bufsize=1,
+                                      universal_newlines=True)
+        os.set_blocking(self.shell.stdout.fileno(), False)
+        self.logger.debug("shell connected")
 
     def stop(self):
-        if self._state.value >= TaskState.STOPPED.value:
+        if self.state().value >= TaskState.STOPPING.value:
             return
         self._state = TaskState.STOPPING
-        logger.info(f"{self}: stopping")
-        self.shell.send_signal(signal.SIGINT)
+        self.logger.info("stopping")
 
     def __str__(self):
         return f"Task(name={self.name})"
+
+
+class GenericTask(Task):
+    def start(self):
+        if super().start():
+            return True
+
+        self._do_action(self._set_started)
 
 
 class AutowareTask(Task):
@@ -260,17 +276,17 @@ class AutowareTask(Task):
             return True
         self._wait_for_line("waiting for self pose...")
         self._wait_seconds(3)
-        self._do_action(lambda: logger.info(f"{self}: ready"))
-        self._do_action(lambda: setattr(self, "_state", TaskState.RUNNING))
+        self._do_action(self._set_started)
 
 
 class TracingTask(Task):
     def start(self):
         if super().start():
             return True
+        self._wait_for_line("press enter to start...")
+        self._do_action(lambda: self.shell.stdin.write("\n"))
         self._wait_for_line("press enter to stop...")
-        self._do_action(lambda: logger.info(f"{self}: ready"))
-        self._do_action(lambda: setattr(self, "_state", TaskState.RUNNING))
+        self._do_action(self._set_started)
 
     def stop(self):
         if self.state() != TaskState.RUNNING:
@@ -285,14 +301,14 @@ class PerfTask(Task):
         if super().start():
             return True
         self._wait_seconds(2)  # Let perf _actually_ start (it doesn't output anything)
-        self._do_action(lambda: setattr(self, "_state", TaskState.RUNNING))
+        self._do_action(self._set_started)
 
 
 class RosbagTask(Task):
     def start(self):
         if super().start():
             return True
-        self._do_action(lambda: setattr(self, "_state", TaskState.RUNNING))
+        self._do_action(self._set_started)
 
 
 class AwsimTask(Task):
@@ -300,14 +316,14 @@ class AwsimTask(Task):
         if super().start():
             return True
         self._wait_seconds(15)  # Let AWSIM _actually_ start (it doesn't output anything)
-        self._do_action(lambda: setattr(self, "_state", TaskState.RUNNING))
+        self._do_action(self._set_started)
 
 
 class MessagesTask(Task):
     def start(self):
         if super().start():
             return True
-        self._state = TaskState.RUNNING
+        self._do_action(self._set_started)
 
 
 TASK_MAP = {
@@ -320,28 +336,23 @@ TASK_MAP = {
 }
 
 
-def run(scenario_path, config_path, env):
+def run(config_path, env):
     yaml = ruamel.yaml.YAML()
 
-    with open(os.path.join(scenario_path, "config.yml")) as f:
-        scenario_cfg = yaml.load(f)
-    scenario = Scenario(scenario_cfg)
-
-    env["AWSIM_RUNNER_SCENARIO"] = os.path.basename(scenario_path)
-    if scenario.rosbag:
-        env["AWSIM_RUNNER_SCENARIO_ROSBAG_PATH"] = scenario.rosbag
-    if scenario.poses:
-        env["AWSIM_RUNNER_SCENARIO_POSES_PATH"] = scenario.poses
-
     for env_var, value in env.items():
-        os.environ[env_var] = str(value)
+        os.environ[env_var] = value
         logger.debug(f"{env_var}={value}")
 
     with open(config_path) as f:
         runner_cfg = yaml.load(f)
 
-    mgr = parse_tasks(runner_cfg, env)
-    mgr.run(env["AWSIM_RUNNER_SCENARIO"])
+    config_name = Path(config_path).stem
+    try:
+        mgr = parse_config(config_name, runner_cfg, env)
+        mgr.run()
+        return 0
+    except Exception:
+        return 1
 
 
 if __name__ == "__main__":
@@ -369,6 +380,8 @@ if __name__ == "__main__":
 
 
     env = dict(map(parse_env_var, args.env_vars))
-
-    env["ROS_DOMAIN_ID"] = 34
-    run(scenario_path, args.config, env)
+    if "ROS_DOMAIN_ID" not in env:
+        raise ValueError("ROS domain ID is not set explicitly. "
+                         "The domain ID MUST be set explicitly to not screw up other people's runs.")
+    ret_status = run(args.config, env)
+    sys.exit(ret_status)
