@@ -108,7 +108,7 @@ class TaskManager:
 
         self.logger.info("STOPPED")
 
-        run_dir = f"runs/{self.cfg_name}"
+        run_dir = f"artifacts/{self.cfg_name}"
         self.logger.info(f"Copying artifacts to {os.path.abspath(run_dir)}")
         shutil.rmtree(run_dir, ignore_errors=True)
         os.makedirs(run_dir)

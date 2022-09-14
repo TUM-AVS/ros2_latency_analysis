@@ -37,7 +37,7 @@ The runner will automatically launch
 * ROS 2 tracing
 * ROS 2 multitopic bw
 
-in the correct order and will produce a new folder named `runs/aw_replay`.
+in the correct order and will produce a new folder named `artifacts/aw_replay`.
 This folder will contain:
 * Recorded tracing data
 * Recorded message sizes
