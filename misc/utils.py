@@ -17,7 +17,7 @@ from IPython import get_ipython
 def skip_if_false(line, cell, local_ns=None):
     condition_var = eval(line, None, local_ns)
     if condition_var:
-        result = get_ipython().run_cell(cell)
+        get_ipython().run_cell(cell)
         return None
     return f"Skipped (evaluated {line} to False)"
 
