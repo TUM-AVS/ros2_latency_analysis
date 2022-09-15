@@ -4,3 +4,8 @@ matplotlib
 pyvis
 graphviz
 ruamel.yaml
+
+ipython
+bidict
+termcolor
+tqdm

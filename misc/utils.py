@@ -35,7 +35,11 @@ def parse_as(type, string):
     raise ValueError(f"Unknown type {type.__name__}")
 
 
-def cached(name, function, file_deps: List[str]):
+def cached(name, function, file_deps: List[str], disable_cache=False):
+    if disable_cache:
+        print(f"[CACHE] Cache disabled for {name}.")
+        return function()
+
     if not os.path.isdir("cache"):
         os.makedirs("cache", exist_ok=True)
 

@@ -5,7 +5,7 @@ from multiprocessing import Pool
 from typing import Optional, Set, List, Iterable, Dict, Tuple
 
 import numpy as np
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from tqdm.contrib import concurrent
 
 from matching.subscriptions import sanitize

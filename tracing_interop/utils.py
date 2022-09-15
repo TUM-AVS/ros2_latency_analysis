@@ -1,7 +1,5 @@
-import sys
-
 import pandas as pd
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 
 def row_to_type(row, type, **type_kwargs):
@@ -15,7 +13,7 @@ def df_to_type_list(df, type, mappers=None, **type_kwargs):
 
     has_idx = not isinstance(df.index, pd.RangeIndex)
     ret_list = []
-    i=0
+
     for row in tqdm(df.itertuples(index=has_idx), desc=f" ├─ Processing {type.__name__}s", total=len(df)):
         row_dict = row._asdict()
         if has_idx:
