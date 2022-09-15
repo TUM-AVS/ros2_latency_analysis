@@ -32,4 +32,9 @@ tasks:
       - autoware
       - messages
       - tracing
+cleanup:
+  start_commands:
+    - "pkill -f ros"
+    - "pkill -f autoware"
+    - "pkill -f http.server"
 runtime_s: 30

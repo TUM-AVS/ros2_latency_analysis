@@ -29,6 +29,7 @@ class TaskState(Enum):
 
 
 class RunnerState(Enum):
+    SETUP = 0
     STARTUP = 1
     RUNNING = 2
     TEARDOWN = 3
@@ -36,12 +37,14 @@ class RunnerState(Enum):
 
 
 class TaskManager:
-    def __init__(self, cfg_name, tasks, start_deps, runtime_s):
+    def __init__(self, cfg_name, tasks, startup_task: 'GenericTask', cleanup_task: 'GenericTask', start_deps, runtime_s):
         self.tasks = tasks
+        self.startup_task = startup_task
+        self.cleanup_task = cleanup_task
         self.cfg_name = cfg_name
         self.logger = logging.getLogger(cfg_name)
         self.runtime_s = runtime_s
-        self._state = RunnerState.STARTUP
+        self._state = RunnerState.SETUP
         self.t_started = None
 
         self.start_order = []
@@ -52,6 +55,14 @@ class TaskManager:
             self.start_order += can_start
 
     def run(self):
+        self.logger.info("SETUP")
+        if self.startup_task:
+            self.startup_task.start()
+            while self._state == RunnerState.SETUP:
+                self.startup_task.poll()
+                if self.startup_task.state().value >= TaskState.STOPPED:
+                    self._state = RunnerState.STARTUP
+
         currently_starting = None
         self.logger.info("STARTUP")
         while self._state == RunnerState.STARTUP:
@@ -83,9 +94,11 @@ class TaskManager:
                 self._state = RunnerState.TEARDOWN
 
         self.logger.info(f"TEARDOWN: {'all tasks finished' if all_terminated else 'runtime is over'}")
-        pkill_procs = [subprocess.Popen(["pkill", "-f", pattern]) for pattern in ("ros", "autoware", "http.server")]
-
+        if self.cleanup_task:
+            self.cleanup_task.start()
         while self._state == RunnerState.TEARDOWN:
+            if self.cleanup_task:
+                self.cleanup_task.poll()
             for task in self.tasks.values():
                 try:
                     task.poll()
@@ -96,10 +109,6 @@ class TaskManager:
             time.sleep(.1)
             if all(t.state().value >= TaskState.STOPPED.value for t in self.tasks.values()):
                 self._state = RunnerState.STOPPED
-
-        # Wait for pkill to finish completely
-        while any(p.poll() is None for p in pkill_procs):
-            time.sleep(.1)
 
         self.logger.info("STOPPED")
 
@@ -128,11 +137,18 @@ def parse_config(cfg_name, cfg_dict, env_vars):
         start_deps[task_name] = task_deps
         tasks[task_name] = task
 
+    if "cleanup" in cfg_dict:
+        cleanup_task = GenericTask("cleanup", cfg_dict["cleanup"], env_vars)
+        startup_task = GenericTask("startup", cfg_dict["cleanup"], env_vars)
+    else:
+        cleanup_task = None
+        startup_task = None
+
     runtime_s = cfg_dict.get("runtime_s") or None
     if runtime_s is not None:
         runtime_s = float(runtime_s)
 
-    return TaskManager(cfg_name, tasks, start_deps, runtime_s)
+    return TaskManager(cfg_name, tasks, startup_task, cleanup_task, start_deps, runtime_s)
 
 
 class Task:
