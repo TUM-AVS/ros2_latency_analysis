@@ -1,15 +1,11 @@
-import base64
-import glob
 import hashlib
 import json
-import math
 import os
 import pickle
-import time
 from typing import List
 
-from IPython.core.magic import (register_cell_magic, needs_local_scope)
 from IPython import get_ipython
+from IPython.core.magic import (register_cell_magic, needs_local_scope)
 
 
 @register_cell_magic
@@ -26,33 +22,6 @@ def left_abbreviate(string, limit=120):
     return string if len(string) <= limit else f"...{string[:limit - 3]}"
 
 
-class ProgressPrinter:
-    def __init__(self, verb, n) -> None:
-        self.verb = verb
-        self.n = n
-        self.i = 0
-        self.fmt_len = math.ceil(math.log10(n if n > 0 else 1))
-
-    def step(self, msg):
-        self.i += 1
-        print(f"({self.i:>{self.fmt_len}d}/{self.n}) {self.verb} {left_abbreviate(msg):<120}", end="\r")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.i -= 1
-
-        if exc_value:
-            self.step("error.")
-            print()
-            print(exc_value)
-            return
-
-        self.step("done.")
-        print()
-
-
 def stable_hash(obj):
     return hashlib.md5(json.dumps(obj).encode("utf-8")).hexdigest()[:10]
 
@@ -64,6 +33,7 @@ def parse_as(type, string):
         val = json.loads(string)
         return type(val)
     raise ValueError(f"Unknown type {type.__name__}")
+
 
 def cached(name, function, file_deps: List[str]):
     if not os.path.isdir("cache"):
