@@ -60,7 +60,7 @@ class TaskManager:
             self.startup_task.start()
             while self._state == RunnerState.SETUP:
                 self.startup_task.poll()
-                if self.startup_task.state().value >= TaskState.STOPPED:
+                if self.startup_task.state().value >= TaskState.STOPPED.value:
                     self._state = RunnerState.STARTUP
 
         currently_starting = None
@@ -200,7 +200,7 @@ class Task:
             if done:
                 self._line_actions = self._line_actions[1:]
 
-    def state(self):
+    def state(self) -> TaskState:
         if not self.shell:
             return self._state
 
@@ -362,7 +362,8 @@ def run(config_path, env):
         mgr = parse_config(config_name, runner_cfg, env)
         mgr.run()
         return 0
-    except Exception:
+    except Exception as e:
+        logger.exception(e)
         return 1
 
 

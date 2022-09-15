@@ -37,4 +37,7 @@ cleanup:
     - "pkill -f ros"
     - "pkill -f autoware"
     - "pkill -f http.server"
+    - "pidwait -f ros"
+    - "pidwait -f autoware"
+    - "pidwait -f http.server"
 runtime_s: 30
