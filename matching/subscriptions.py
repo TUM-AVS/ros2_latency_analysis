@@ -47,7 +47,7 @@ class TKind(Enum):
     # language=PythonRegExp
     ns_sep = r"(?P<ns_sep>::)"
     # language=PythonRegExp
-    unknown_symbol = r"(?P<unknown_symbol>\?)"
+    unknown_token = r"(?P<unknown_token>.)"
 
     def __repr__(self):
         return self.name
@@ -128,7 +128,6 @@ TR_BLACKLIST = [
 
 
 def cl_deps_to_tr_deps(matches: Set[Tuple], tr: TrContext, cl: ClContext):
-
     ##################################################
     # Narrow down matches
     ##################################################
@@ -314,7 +313,11 @@ def match_and_modify_children(node: ASTEntry, match_func):
 
 
 def sanitize(sig: str):
-    ast = build_ast(sig)
+    try:
+        ast = build_ast(sig)
+    except Exception as e:
+        print(f"[ERROR] Could not build AST for {sig}, returning it as-is. {e}")
+        return str
 
     def _remove_qualifiers(node: ASTEntry):
         match node:
@@ -341,7 +344,6 @@ def sanitize(sig: str):
                           callee_ret,
                           ASTNode('()', children=[*callee_ptr, ASTNode('()', bind_args)]),
                           ASTNode('()') as replacement_args])]:
-
                     return [callee_ret] + head + [ASTNode('()', callee_ptr, parent,
                                                           ASTLeaf(TKind.par_open, '('),
                                                           ASTLeaf(TKind.par_close, ')')),
@@ -389,7 +391,7 @@ def sanitize(sig: str):
                 return None
             case ASTNode():
                 return match_and_modify_children(node, _child_seq_matcher)
-            case ASTLeaf(TKind.ref | TKind.ptr | TKind.ns_sep | TKind.unknown_symbol):
+            case ASTLeaf(TKind.ref | TKind.ptr | TKind.ns_sep | TKind.unknown_token):
                 return None
         return node
 
@@ -420,14 +422,22 @@ def sanitize(sig: str):
 
         return node
 
-    ast = traverse(ast, _remove_qualifiers)
-    ast = traverse(ast, _remove_std_wrappers)
-    ast = traverse(ast, _remove_std_bind)
-    ast = traverse(ast, _unwrap_lambda)
-    ast = traverse(ast, _remove_artifacts)
-    ast = traverse(ast, _replace_verbose_types)
-    ast = traverse(ast, _replace_lambda_enumerations)
-    #ast = _remove_return_types(ast)
+    sanitization_actions = [
+            _remove_qualifiers,
+            _remove_std_wrappers,
+            _remove_std_bind,
+            _unwrap_lambda,
+            _remove_artifacts,
+            _replace_verbose_types,
+            _replace_lambda_enumerations
+    ]
+
+    for action in sanitization_actions:
+        try:
+            ast = traverse(ast, action)
+        except Exception as e:
+            print(f"[WARN] Could not apply {action.__name__} sanitization, skipped: {e}")
+
     return ast
 
 
