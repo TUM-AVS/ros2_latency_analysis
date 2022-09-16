@@ -1,3 +1,4 @@
+import ast
 import hashlib
 import json
 import os
@@ -26,13 +27,9 @@ def stable_hash(obj):
     return hashlib.md5(json.dumps(obj).encode("utf-8")).hexdigest()[:10]
 
 
-def parse_as(type, string):
-    if any(issubclass(type, type2) for type2 in (str, bool, float, int)):
-        return type(string)
-    if issubclass(type, list) or issubclass(type, dict) or issubclass(type, set):
-        val = json.loads(string)
-        return type(val)
-    raise ValueError(f"Unknown type {type.__name__}")
+def parse_as(target_type, string):
+    obj = ast.literal_eval(string)
+    return target_type(obj)
 
 
 def cached(name, function, file_deps: List[str], disable_cache=False):
