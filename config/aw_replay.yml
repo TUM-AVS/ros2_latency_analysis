@@ -37,7 +37,7 @@ cleanup:
     - "pkill -f ros"
     - "pkill -f autoware"
     - "pkill -f http.server"
-    - "wait $(pgrep -f ros | tr '\n' ' ')"
-    - "wait $(pgrep -f autoware | tr '\n' ' ')"
-    - "wait $(pgrep -f http.server | tr '\n' ' ')"
+    - "wait $(pgrep -d ' ' -f ros)"
+    - "wait $(pgrep -d ' ' -f autoware)"
+    - "wait $(pgrep -d ' ' -f http.server)"
 runtime_s: 30
