@@ -1,4 +1,4 @@
-from bisect import bisect_left, bisect
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from itertools import combinations
 from multiprocessing import Pool
@@ -71,7 +71,7 @@ def _get_publishing_cbs(cbs: Set[TrCallbackObject], pub: TrPublisher):
         cb_intervals = map(inst_runtime_interval, cb.callback_instances)
         for t_start, t_end in cb_intervals:
             i_overlap_begin = bisect_left(pub_insts, t_start, key=lambda x: x.timestamp)
-            i_overlap_end = bisect(pub_insts, t_end, key=lambda x: x.timestamp)
+            i_overlap_end = bisect_right(pub_insts, t_end, key=lambda x: x.timestamp)
             for i in range(i_overlap_begin, i_overlap_end):
                 pub_cb_overlaps[i].add(cb)
 

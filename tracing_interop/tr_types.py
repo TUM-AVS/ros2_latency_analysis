@@ -1,7 +1,6 @@
 from collections import namedtuple, UserList
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Set, TypeVar, Generic, Iterable
-import bisect
 
 from tracetools_analysis.processor.ros2 import Ros2Handler
 
