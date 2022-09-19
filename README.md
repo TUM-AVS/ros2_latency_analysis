@@ -5,7 +5,7 @@ Run Autoware scenarios reproducibly.
 ## Installation
 
 ```shell
-git clone https://gitlab.lrz.de/schmeller/ma-awsim-scenario-runner.git
+git clone https://gitlab.lrz.de/schmeller/ma-autoware-scenario-runner.git
 cd ma-autoware-scenario-runner
 pip install -r requirements.txt
 ```
