@@ -4,7 +4,7 @@ tasks:
       - "cd ~/edgar/autoware"
       - "source install/setup.bash"
       - "export DISPLAY=:1"
-      - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false | tee autoware.log"
+      - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false launch_web_controller:=false | tee autoware.log"
     artifact_location: "~/edgar/autoware/autoware.log"
     start_deps:
       - tracing
@@ -15,14 +15,6 @@ tasks:
       - "rm -rf ~/.ros/tracing/scenario-trace"
       - "ros2 trace -s scenario-trace -k"
     artifact_location: "~/.ros/tracing/scenario-trace"
-  messages:
-    start_commands:
-      - "cd ~/edgar/max/ma-core2core/message_size"
-      - "source ~/edgar/max/ros2multitopic/install/setup.bash"
-      - "./record.bash"
-    artifact_location: "~/edgar/max/ma-core2core/message_size/result.h5"
-    start_deps:
-      - autoware
   rosbag:
     start_commands:
       - "cd ~/edgar/autoware"
@@ -30,7 +22,6 @@ tasks:
       - "ros2 bag play assets/sample-rosbag"
     start_deps:
       - autoware
-      - messages
       - tracing
 cleanup:
   start_commands:
