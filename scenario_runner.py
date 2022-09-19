@@ -159,7 +159,6 @@ class Task:
         self.artifacts_loc = cfg_dict["artifact_location"] if "artifact_location" in cfg_dict else None
         if self.artifacts_loc is not None:
             self.artifacts_loc = os.path.expanduser(os.path.expandvars(self.artifacts_loc))
-        self.logger.debug("connecting to shell...")
 
         self.shell = None
         self.env = env_vars
@@ -209,8 +208,12 @@ class Task:
         if shell_status is None:  # running
             pass
         elif shell_status == 0:  # exited (code 0)
+            if self._state.value < TaskState.STOPPED.value:
+                self.logger.info("stopped")
             self._state = TaskState.STOPPED
         else:
+            if self._state.value < TaskState.STOPPED.value:
+                self.logger.info("crashed")
             self._state = TaskState.CRASHED
 
         return self._state
@@ -261,7 +264,7 @@ class Task:
                                       bufsize=1,
                                       universal_newlines=True)
         os.set_blocking(self.shell.stdout.fileno(), False)
-        self.logger.debug("shell connected")
+        self.logger.debug("shell opened")
 
     def stop(self):
         if self.state().value >= TaskState.STOPPING.value:

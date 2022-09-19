@@ -4,7 +4,7 @@ tasks:
       - "cd ~/edgar/autoware"
       - "source install/setup.bash"
       - "export DISPLAY=:1"
-      - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=true | tee autoware.log"
+      - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false | tee autoware.log"
     artifact_location: "~/edgar/autoware/autoware.log"
     start_deps:
       - tracing
@@ -37,7 +37,7 @@ cleanup:
     - "pkill -f ros"
     - "pkill -f autoware"
     - "pkill -f http.server"
-    - "pidwait -f ros"
-    - "pidwait -f autoware"
-    - "pidwait -f http.server"
+    - "wait $(pgrep -f ros | tr '\n' ' ')"
+    - "wait $(pgrep -f autoware | tr '\n' ' ')"
+    - "wait $(pgrep -f http.server | tr '\n' ' ')"
 runtime_s: 30
