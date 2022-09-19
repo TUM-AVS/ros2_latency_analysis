@@ -23,6 +23,13 @@ tasks:
     start_deps:
       - autoware
       - tracing
+  runner_logs:
+    start_commands: []
+    start_deps:
+      - autoware
+      - tracing
+      - rosbag
+    artifact_location: "~/optimization_framework_ws/runner.log"
 cleanup:
   start_commands:
     - "pkill -f ros"
