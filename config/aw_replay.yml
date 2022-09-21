@@ -32,13 +32,13 @@ tasks:
     artifact_location: "~/optimization_framework_ws/runner.log"
 startup:
   commands:
-    - "pkill -f 'ros|autoware|http.server'"
-    - "tail --pid=$(pgrep -d ' --pid=' -f 'ros|autoware|http.server') -f"
+    - "pkill -f 'ros|autoware|http\\.server'"
+    - "tail --pid=$(pgrep -d ' --pid=' -f 'ros|autoware|http\\.server') -f /dev/null"
     - "echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
     - "echo 1500000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed"
 cleanup:
   commands:
-    - "pkill -f 'ros|autoware|http.server'"
-    - "tail --pid=$(pgrep -d ' --pid=' -f 'ros|autoware|http.server') -f"
+    - "pkill -f 'ros|autoware|http\\.server'"
+    - "tail --pid=$(pgrep -d ' --pid=' -f 'ros|autoware|http\\.server') -f /dev/null"
     - "echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
 runtime_s: 30

@@ -96,9 +96,10 @@ class TaskManager:
         self.logger.info(f"TEARDOWN: {'all tasks finished' if all_terminated else 'runtime is over'}")
         if self.cleanup_task:
             self.cleanup_task.start()
-        while self._state == RunnerState.TEARDOWN:
-            if self.cleanup_task:
+            while self.cleanup_task.state().value < TaskState.STOPPED.value:
                 self.cleanup_task.poll()
+
+        while self._state == RunnerState.TEARDOWN:
             for task in self.tasks.values():
                 try:
                     task.poll()
@@ -366,11 +367,12 @@ def run(config_path, env):
         os.environ[env_var] = value
         logger.debug(f"{env_var}={value}")
 
-    with open(config_path) as f:
-        runner_cfg = yaml.load(f)
-
-    config_name = Path(config_path).stem
     try:
+        with open(config_path) as f:
+            runner_cfg = yaml.load(f)
+
+        config_name = Path(config_path).stem
+
         mgr = parse_config(config_name, runner_cfg, env)
         mgr.run()
         return 0
