@@ -139,9 +139,12 @@ def parse_config(cfg_name, cfg_dict, env_vars):
 
     if "cleanup" in cfg_dict:
         cleanup_task = GenericTask("cleanup", cfg_dict["cleanup"], env_vars)
-        startup_task = GenericTask("startup", cfg_dict["cleanup"], env_vars)
     else:
         cleanup_task = None
+
+    if "startup" in cfg_dict:
+        startup_task = GenericTask("startup", cfg_dict["startup"], env_vars)
+    else:
         startup_task = None
 
     runtime_s = cfg_dict.get("runtime_s") or None
@@ -155,7 +158,7 @@ class Task:
     def __init__(self, name, cfg_dict, env_vars):
         self.name = name
         self.logger = logging.getLogger(self.name)
-        self.commands = cfg_dict["start_commands"]
+        self.commands = cfg_dict["commands"]
         self.artifacts_loc = cfg_dict["artifact_location"] if "artifact_location" in cfg_dict else None
         if self.artifacts_loc is not None:
             self.artifacts_loc = os.path.expanduser(os.path.expandvars(self.artifacts_loc))
@@ -258,13 +261,19 @@ class Task:
 
         env_commands = [f"export {k}={v}" for k, v in self.env.items()]
         command_str = '; '.join(env_commands + self.commands)
-        self.shell = subprocess.Popen(["/bin/bash", "-c", command_str],
+        logger.debug(command_str)
+
+        # We give the commands via stdin instead of -c, because otherwise
+        # we kill ourselves with the pkill commands in the startup phase
+        self.shell = subprocess.Popen(["/bin/bash"],
                                       stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                       text=True,
                                       bufsize=1,
                                       universal_newlines=True)
         os.set_blocking(self.shell.stdout.fileno(), False)
-        self.logger.debug("shell opened")
+        self.shell.stdin.write(command_str + '; exit\n')
+
+        self.logger.debug("shell started")
 
     def stop(self):
         if self.state().value >= TaskState.STOPPING.value:
