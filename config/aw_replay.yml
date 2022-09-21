@@ -1,6 +1,6 @@
 tasks:
   autoware:
-    start_commands:
+    commands:
       - "cd ~/edgar/autoware"
       - "source install/setup.bash"
       - "export DISPLAY=:1"
@@ -9,14 +9,14 @@ tasks:
     start_deps:
       - tracing
   tracing:
-    start_commands:
+    commands:
       - "cd ~/edgar/autoware"
       - "source install/setup.bash"
       - "rm -rf ~/.ros/tracing/scenario-trace"
       - "ros2 trace -s scenario-trace -k"
     artifact_location: "~/.ros/tracing/scenario-trace"
   rosbag:
-    start_commands:
+    commands:
       - "cd ~/edgar/autoware"
       - "source install/setup.bash"
       - "ros2 bag play assets/sample-rosbag"
@@ -24,18 +24,21 @@ tasks:
       - autoware
       - tracing
   runner_logs:
-    start_commands: []
+    commands: []
     start_deps:
       - autoware
       - tracing
       - rosbag
     artifact_location: "~/optimization_framework_ws/runner.log"
+startup:
+  commands:
+    - "pkill -f 'ros|autoware|http.server'"
+    - "tail --pid=$(pgrep -d ' --pid=' -f 'ros|autoware|http.server') -f"
+    - "echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
+    - "echo 1500000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed"
 cleanup:
-  start_commands:
-    - "pkill -f ros"
-    - "pkill -f autoware"
-    - "pkill -f http.server"
-    - "wait $(pgrep -d ' ' -f ros)"
-    - "wait $(pgrep -d ' ' -f autoware)"
-    - "wait $(pgrep -d ' ' -f http.server)"
+  commands:
+    - "pkill -f 'ros|autoware|http.server'"
+    - "tail --pid=$(pgrep -d ' --pid=' -f 'ros|autoware|http.server') -f"
+    - "echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
 runtime_s: 30
