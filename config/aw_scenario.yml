@@ -1,0 +1,18 @@
+tasks:
+  autoware:
+    start_commands:
+      - cd ~/edgar/autoware
+      - source install/setup.bash
+      - export DISPLAY=:1
+      - ros2 launch scenario_test_runner edgar_scenario_runner.launch.py architecture_type:=awf/universe record:=false scenario:='$(find-pkg-share scenario_test_runner)/scenario/edgar_0ped.yaml' sensor_model:=sample_sensor_kit vehicle_model:=sample_vehicle 2>&1 | tee autoware.log
+    artifact_location: "~/edgar/autoware/autoware.log"
+    start_deps:
+      - tracing
+  tracing:
+    start_commands:
+      - cd ~/edgar/autoware
+      - source install/setup.bash
+      - rm -rf ~/.ros/tracing/scenario-trace
+      - ros2 trace -s scenario-trace -k
+    artifact_location: "~/.ros/tracing/scenario-trace"
+runtime_s: 60
