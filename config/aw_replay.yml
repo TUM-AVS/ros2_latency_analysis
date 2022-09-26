@@ -1,25 +1,25 @@
 tasks:
   autoware:
     commands:
-      - "cd ~/edgar/autoware"
-      - "source install/setup.bash"
-      - "export DISPLAY=:1"
-      - "ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false launch_web_controller:=false | tee autoware.log"
+      - cd ~/edgar/autoware
+      - source install/setup.bash
+      - export DISPLAY=:1
+      - ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false launch_web_controller:=false 2>&1 | tee autoware.log
     artifact_location: "~/edgar/autoware/autoware.log"
     start_deps:
       - tracing
   tracing:
     commands:
-      - "cd ~/edgar/autoware"
-      - "source install/setup.bash"
-      - "rm -rf ~/.ros/tracing/scenario-trace"
-      - "ros2 trace -s scenario-trace -k"
+      - cd ~/edgar/autoware
+      - source install/setup.bash
+      - rm -rf ~/.ros/tracing/scenario-trace
+      - ros2 trace -s scenario-trace -k
     artifact_location: "~/.ros/tracing/scenario-trace"
   rosbag:
     commands:
-      - "cd ~/edgar/autoware"
-      - "source install/setup.bash"
-      - "ros2 bag play assets/sample-rosbag"
+      - cd ~/edgar/autoware
+      - source install/setup.bash
+      - ros2 bag play assets/sample-rosbag
     start_deps:
       - autoware
       - tracing
@@ -32,17 +32,17 @@ tasks:
     artifact_location: "~/optimization_framework_ws/runner.log"
 startup:
   commands:
-    - "pkill -f ros --signal SIGINT"
-    - "tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null"
-    - "pkill -f 'autoware|http\\.server'"
-    - "tail --pid=$(pgrep -d ' --pid=' -f 'autoware|http\\.server') -f /dev/null"
-    - "echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
-    - "echo 1500000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed"
+    - pstree -p -s -T -c -a $$
+    - pkill -f ros --signal SIGINT
+    - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
+    - pgrep -f 'autoware|http\.server|^python3 \./scenario_runner.py' | grep -v -x -F -e $$ -e $PPID | xargs kill
+    - echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+    - echo 1500000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed
 cleanup:
   commands:
-    - "pkill -f ros --signal SIGINT"
-    - "tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null"
-    - "pkill -f 'autoware|http\\.server'"
-    - "tail --pid=$(pgrep -d ' --pid=' -f 'autoware|http\\.server') -f /dev/null"
-    - "echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
+    - pstree -p -s -T -c -a $$
+    - pkill -f ros --signal SIGINT
+    - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
+    - pgrep -f 'autoware|http\.server|^python3 \./scenario_runner.py' | grep -v -x -F -e $$ -e $PPID | xargs kill
+    - echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 runtime_s: 30

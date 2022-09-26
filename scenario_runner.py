@@ -272,7 +272,7 @@ class Task:
                                       bufsize=1,
                                       universal_newlines=True)
         os.set_blocking(self.shell.stdout.fileno(), False)
-        self.shell.stdin.write(command_str + '; exit\n')
+        self.shell.stdin.write(command_str + '; exit 0\n')
 
         self.logger.debug("shell started")
 
