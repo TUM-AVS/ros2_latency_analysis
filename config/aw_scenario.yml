@@ -1,6 +1,6 @@
 tasks:
   autoware:
-    start_commands:
+    commands:
       - cd ~/edgar/autoware
       - source install/setup.bash
       - export DISPLAY=:1
@@ -9,7 +9,7 @@ tasks:
     start_deps:
       - tracing
   tracing:
-    start_commands:
+    commands:
       - cd ~/edgar/autoware
       - source install/setup.bash
       - rm -rf ~/.ros/tracing/scenario-trace
