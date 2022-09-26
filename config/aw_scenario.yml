@@ -20,7 +20,6 @@ tasks:
     start_deps:
       - autoware
       - tracing
-      - rosbag
     artifact_location: "~/optimization_framework_ws/runner.log"
 startup:
   commands:
