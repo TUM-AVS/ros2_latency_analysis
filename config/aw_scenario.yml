@@ -15,4 +15,26 @@ tasks:
       - rm -rf ~/.ros/tracing/scenario-trace
       - ros2 trace -s scenario-trace -k
     artifact_location: "~/.ros/tracing/scenario-trace"
+  runner_logs:
+    commands: [ ]
+    start_deps:
+      - autoware
+      - tracing
+      - rosbag
+    artifact_location: "~/optimization_framework_ws/runner.log"
+startup:
+  commands:
+    - pstree -p -s -T -c -a $$
+    - pkill -f ros --signal SIGINT
+    - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
+    - pgrep -f 'autoware|http\.server|^python3 \./scenario_runner.py' | grep -v -x -F -e $$ -e $PPID | xargs kill
+    - echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+    - echo 1500000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed
+cleanup:
+  commands:
+    - pstree -p -s -T -c -a $$
+    - pkill -f ros --signal SIGINT
+    - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
+    - pgrep -f 'autoware|http\.server|^python3 \./scenario_runner.py' | grep -v -x -F -e $$ -e $PPID | xargs kill
+    - echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
 runtime_s: 60
