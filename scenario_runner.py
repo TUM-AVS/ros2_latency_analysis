@@ -298,8 +298,8 @@ class AutowareTask(Task):
     def start(self):
         if super().start():
             return True
-        self._wait_for_line("waiting for self pose...")
-        self._wait_seconds(3)
+        # This is the node that is always loaded last in my observation
+        self._wait_for_line("Loaded node '/perception/traffic_light_recognition/traffic_light_roi_visualizer' in container '/perception/traffic_light_recognition/traffic_light_node_container'")
         self._do_action(self._set_started)
 
 

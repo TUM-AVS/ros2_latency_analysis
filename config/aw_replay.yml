@@ -4,7 +4,7 @@ tasks:
       - cd ~/edgar/autoware
       - source install/setup.bash
       - export DISPLAY=:1
-      - ros2 launch autoware_launch logging_simulator.launch.xml map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false launch_web_controller:=false 2>&1 | tee autoware.log
+      - ros2 launch autoware_launch logging_simulator.launch.xml use_pointcloud_container:=false map_path:=$PWD/assets/sample-map-rosbag vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit rviz:=false launch_web_controller:=false 2>&1 | tee autoware.log
     artifact_location: "~/edgar/autoware/autoware.log"
     start_deps:
       - tracing
