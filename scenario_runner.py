@@ -290,7 +290,6 @@ class GenericTask(Task):
     def start(self):
         if super().start():
             return True
-
         self._do_action(self._set_started)
 
 
@@ -320,43 +319,14 @@ class TracingTask(Task):
         self._do_action(super().stop)
 
 
-class PerfTask(Task):
-    def start(self):
-        if super().start():
-            return True
-        self._wait_seconds(2)  # Let perf _actually_ start (it doesn't output anything)
-        self._do_action(self._set_started)
-
-
-class RosbagTask(Task):
-    def start(self):
-        if super().start():
-            return True
-        self._do_action(self._set_started)
-
-
-class AwsimTask(Task):
-    def start(self):
-        if super().start():
-            return True
-        self._wait_seconds(15)  # Let AWSIM _actually_ start (it doesn't output anything)
-        self._do_action(self._set_started)
-
-
-class MessagesTask(Task):
-    def start(self):
-        if super().start():
-            return True
-        self._do_action(self._set_started)
+class RosbagTask(GenericTask):
+    pass
 
 
 TASK_MAP = {
-        "autoware": AutowareTask,
-        "awsim": AwsimTask,
-        "tracing": TracingTask,
-        "perf": PerfTask,
-        "rosbag": RosbagTask,
-        "messages": MessagesTask
+    "autoware": AutowareTask,
+    "tracing": TracingTask,
+    "rosbag": RosbagTask,
 }
 
 
