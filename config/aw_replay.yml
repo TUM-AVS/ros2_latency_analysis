@@ -15,6 +15,20 @@ tasks:
       - rm -rf ~/.ros/tracing/scenario-trace
       - ros2 trace -s scenario-trace -k
     artifact_location: "~/.ros/tracing/scenario-trace"
+  trace_cpu_usage:
+    commands:
+      - top -b -d 0.01 | grep -F '%Cpu(s)' > ~/edgar/autoware/cpu_usage.log
+    artifact_location: "~/edgar/autoware/cpu_usage.log"
+    start_debs:
+      - autoware
+      - tracing
+  trace_memory_usage:
+    commands:
+      - free -s 0.01 > ~/edgar/autoware/memory_usage.log
+    artifact_location: "~/edgar/autoware/memory_usage.log"
+    start_debs:
+      - autoware
+      - tracing
   rosbag:
     commands:
       - cd ~/edgar/autoware

@@ -323,10 +323,20 @@ class RosbagTask(GenericTask):
     pass
 
 
+class TraceCpuTask(GenericTask):
+    pass
+
+
+class TraceMemoryTask(GenericTask):
+    pass
+
+
 TASK_MAP = {
     "autoware": AutowareTask,
     "tracing": TracingTask,
     "rosbag": RosbagTask,
+    "trace_cpu_usage": TraceCpuTask,
+    "trace_memory_usage": TraceMemoryTask,
 }
 
 
