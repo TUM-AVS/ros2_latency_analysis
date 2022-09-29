@@ -43,9 +43,12 @@ tasks:
       - autoware
       - tracing
       - rosbag
+      - trace_cpu_usage
+      - trace_memory_usage
     artifact_location: "~/optimization_framework_ws/runner.log"
 startup:
   commands:
+    - pkill -x 'top|free'
     - pstree -p -s -T -c -a $$
     - pkill -f ros --signal SIGINT
     - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
@@ -54,6 +57,7 @@ startup:
     - echo 1500000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed
 cleanup:
   commands:
+    - pkill -x 'top|free'
     - pstree -p -s -T -c -a $$
     - pkill -f ros --signal SIGINT
     - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
