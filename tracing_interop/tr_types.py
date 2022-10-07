@@ -1,5 +1,6 @@
-from collections import namedtuple, UserList
+from collections import namedtuple, UserList, defaultdict
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import List, Dict, Optional, Set, TypeVar, Generic, Iterable
 
 from tracetools_analysis.processor.ros2 import Ros2Handler
@@ -21,19 +22,25 @@ class Index(Generic[IdxItemType]):
         for idx_name, is_multi in idx_fields.items():
             index = {}
             self.__indices[idx_name] = index
-
             if is_multi:
                 for item in self.__items:
                     key = getattr(item, idx_name)
                     if key not in index:
                         index[key] = []
                     index[key].append(item)  # Also sorted since items are processed in order and only filtered here
-            else:
+            else:  # Unique index
+                duplicate_indices = defaultdict(lambda: 0)
+
                 for item in self.__items:
                     key = getattr(item, idx_name)
                     if key in index:
-                        print(repr(ValueError(f"Duplicate key: {idx_name}={key}; old={index[key]}; new={item}")))
+                        duplicate_indices[key] += 1
                     index[key] = item
+
+                if duplicate_indices:
+                    print(f"[ENTKÄFERN] Duplicate Indices in {idx_name}:")
+                # for key, count in duplicate_indices.items():
+                #     print(f"--{key:<20d}'s last candidate: {repr(index[key])}")
 
     def __iter__(self):
         return iter(self.__items)
@@ -330,6 +337,14 @@ class TrCallbackInstance:
     @property
     def callback_obj(self) -> Optional['TrCallbackObject']:
         return self._c.callback_objects.by_callback_object.get(self.callback_object)
+
+    @property
+    def t_start(self):
+        return self.timestamp
+
+    @cached_property
+    def t_end(self):
+        return self.timestamp + self.duration
 
     def __hash__(self):
         return hash((self.callback_object, self.timestamp, self.duration))

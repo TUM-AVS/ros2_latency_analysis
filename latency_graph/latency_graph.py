@@ -1,8 +1,10 @@
 from bisect import bisect_left, bisect_right
+from collections import defaultdict
 from dataclasses import dataclass
 from itertools import combinations
 from multiprocessing import Pool
 from typing import Optional, Set, List, Iterable, Dict, Tuple
+from functools import cache
 
 import numpy as np
 from tqdm import tqdm
@@ -15,20 +17,15 @@ from tracing_interop.tr_types import TrContext, TrCallbackObject, TrCallbackSymb
 TOPIC_FILTERS = ["/parameter_events", "/tf_static", "/robot_description", "diagnostics", "/rosout"]
 
 
+@cache
 def _get_cb_owner_node(cb: TrCallbackObject) -> TrNode | None:
     match cb.owner:
         case TrTimer(node=node):
-            owner_node = node
+            return node
         case TrSubscriptionObject(subscription=sub):
-            owner_node = sub.node
+            return sub.node
         case _:
-            owner_node = None
-
-    if not owner_node:
-        print("[WARN] CB has no owners")
-        return None
-
-    return owner_node
+            return None
 
 
 def _hierarchize(lg_nodes: Iterable['LGHierarchyLevel']):
@@ -54,12 +51,6 @@ def _hierarchize(lg_nodes: Iterable['LGHierarchyLevel']):
     return base
 
 
-def inst_runtime_interval(cb_inst: TrCallbackInstance):
-    start_time = cb_inst.timestamp
-    end_time = start_time + cb_inst.duration
-    return start_time, end_time
-
-
 def _get_publishing_cbs(cbs: Set[TrCallbackObject], pub: TrPublisher):
     """
     Counts number of publication instances that lie within one of the cb_intervals.
@@ -68,7 +59,7 @@ def _get_publishing_cbs(cbs: Set[TrCallbackObject], pub: TrPublisher):
     pub_cb_overlaps = {i: set() for i in range(len(pub_insts))}
 
     for cb in cbs:
-        cb_intervals = map(inst_runtime_interval, cb.callback_instances)
+        cb_intervals = map(lambda inst: (inst.t_start, inst.t_end), cb.callback_instances)
         for t_start, t_end in cb_intervals:
             i_overlap_begin = bisect_left(pub_insts, t_start, key=lambda x: x.timestamp)
             i_overlap_end = bisect_right(pub_insts, t_end, key=lambda x: x.timestamp)
@@ -77,13 +68,19 @@ def _get_publishing_cbs(cbs: Set[TrCallbackObject], pub: TrPublisher):
 
     pub_cbs = set()
     cb_cb_overlaps = set()
+    cb_less_pubs = defaultdict(lambda: 0)
     for i, i_cbs in pub_cb_overlaps.items():
         if not i_cbs:
-            print(f"[WARN] Publication on {pub.topic_name} without corresponding callback!")
+            cb_less_pubs[pub.topic_name] += 1
         elif len(i_cbs) == 1:
             pub_cbs.update(i_cbs)
         else:  # Multiple CBs in i_cbs
             cb_cb_overlaps.update(iter(combinations(i_cbs, 2)))
+
+    if cb_less_pubs:
+        print(f"[ENTKÄFERN] There are {len(cb_less_pubs)} topics which have publications from untracked callbacks:")
+    for topic_name, count in cb_less_pubs.items():
+        print(f"--{pub.topic_name:.<120s}: {count:>20d} ownerless publications")
 
     for cb1, cb2 in cb_cb_overlaps:
         cb1_subset_of_cb2 = True
@@ -213,12 +210,18 @@ class LatencyGraph:
 
         # Note that nodes can also be None!
         nodes_to_cbs = {}
+        ownerless_cbs = 0
         for cb in tqdm(tr.callback_objects, desc="Finding CB nodes"):
             node = _get_cb_owner_node(cb)
+            if node is None:
+                ownerless_cbs += 1
+                continue
 
             if node not in nodes_to_cbs:
                 nodes_to_cbs[node] = set()
             nodes_to_cbs[node].add(cb)
+
+        print(f"[ENTKÄFERN] {ownerless_cbs} callbacks have no owner, filtering them out.")
 
         ##################################################
         # Find in/out topics for each callback
