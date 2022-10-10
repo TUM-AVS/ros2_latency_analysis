@@ -28,7 +28,7 @@ startup:
     - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
     - pgrep -f 'autoware|http\.server|^python3 \./scenario_runner.py' | grep -v -x -F -e $$ -e $PPID | xargs kill
     - echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
-    - echo 1500000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed
+    - echo 3000000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed
 cleanup:
   commands:
     - pstree -p -s -T -c -a $$
