@@ -1,3 +1,4 @@
+from uuid import UUID, uuid4
 from collections import namedtuple, UserList, defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -75,6 +76,7 @@ class TrContext:
     publish_instances: Index['TrPublishInstance']
     callback_instances: Index['TrCallbackInstance']
     topics: Index['TrTopic']
+    _uuid: UUID
 
     def __init__(self, handler: Ros2Handler):
         print("[TrContext] Processing ROS 2 objects from traces...")
@@ -109,6 +111,14 @@ class TrContext:
 
         self.topics = Index((TrTopic(name=name, _c=self) for name in _unique_topic_names),
                             name=False)
+
+        self._uuid = uuid4()
+
+    def __hash__(self):
+        return hash(self._uuid)
+
+    def __eq__(self, other):
+        return isinstance(other, TrContext) and other._uuid == self._uuid
 
     def __repr__(self):
         return f"TrContext"

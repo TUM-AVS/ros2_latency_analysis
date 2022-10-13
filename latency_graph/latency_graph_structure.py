@@ -1,18 +1,16 @@
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from dataclasses import dataclass
-from itertools import combinations
-from multiprocessing import Pool
-from typing import Optional, Set, List, Iterable, Dict, Tuple
 from functools import cache
+from itertools import combinations
+from typing import Optional, Set, List, Iterable, Dict
+from uuid import UUID, uuid4
 
-import numpy as np
 from tqdm import tqdm
-from tqdm.contrib import concurrent
 
 from matching.subscriptions import sanitize
-from tracing_interop.tr_types import TrContext, TrCallbackObject, TrCallbackSymbol, TrNode, TrPublisher, TrSubscription, \
-    TrTimer, TrPublishInstance, TrSubscriptionObject, TrTopic, TrCallbackInstance, Timestamp
+from tracing_interop.tr_types import TrContext, TrCallbackObject, TrCallbackSymbol, TrNode, TrPublisher, TrTimer, \
+    TrSubscriptionObject, TrTopic
 
 TOPIC_FILTERS = ["/parameter_events", "/tf_static", "/robot_description", "diagnostics", "/rosout"]
 
@@ -203,6 +201,8 @@ class LatencyGraph:
     cb_pubs: Dict[TrCallbackObject, Set[TrPublisher]]
     pub_cbs: Dict[TrPublisher, Set[TrCallbackObject]]
 
+    _uuid: UUID
+
     def __init__(self, tr: TrContext):
         ##################################################
         # Annotate nodes with their callbacks
@@ -290,3 +290,10 @@ class LatencyGraph:
         ##################################################
 
         self.top_node = _hierarchize(lg_nodes)
+        self._uuid = uuid4()
+
+    def __hash__(self):
+        return hash(self._uuid)
+
+    def __eq__(self, other):
+        return isinstance(other, LatencyGraph) and other._uuid == self._uuid
