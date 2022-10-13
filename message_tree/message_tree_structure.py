@@ -5,12 +5,16 @@ E2EBreakdownItem = namedtuple("E2EBreakdownItem", ("type", "duration", "location
 DepTree = namedtuple("DepTree", ("head", "deps"))
 
 
-def depth(tree: DepTree):
-    return 1 + max(map(depth, tree.deps), default=0)
+def depth(tree: DepTree, lvl=0):
+    if lvl > 1000:
+        return 0
+    return 1 + max(map(lambda d: depth(d, lvl + 1), tree.deps), default=0)
 
 
-def size(tree: DepTree):
-    return 1 + sum(map(size, tree.deps))
+def size(tree: DepTree, lvl=0):
+    if lvl > 1000:
+        return 0
+    return 1 + sum(map(lambda d: size(d, lvl + 1), tree.deps))
 
 
 def fanout(tree: DepTree):

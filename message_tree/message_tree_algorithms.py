@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from latency_graph.latency_graph_structure import LatencyGraph
 from matching.subscriptions import sanitize
-from message_tree.message_tree_structure import DepTree, E2EBreakdownItem
+from message_tree.message_tree_structure import DepTree, E2EBreakdownItem, depth, size
 from tracing_interop.tr_types import TrCallbackInstance, TrPublishInstance, TrPublisher, TrCallbackObject, TrContext, \
     TrSubscriptionObject, TrTimer, TrNode, TrTopic
 
@@ -104,7 +104,7 @@ def build_dep_trees(end_topics, lat_graph, tr, excluded_path_patterns, time_limi
         pubs = end_topic.publishers
         for pub in pubs:
             msgs = list(pub.instances)
-            for msg in tqdm(msgs, desc="Processing output messages"):
+            for msg in tqdm(msgs, mininterval=5.0, desc="Processing output messages"):
                 msg: TrPublishInstance
                 tree = get_dep_tree(msg, lat_graph, tr, excluded_path_patterns, time_limit_s)
                 all_trees.append(tree)
@@ -233,8 +233,17 @@ def e2e_paths_sorted_desc(tree: DepTree, input_topic_patterns):
     `input_topic_patterns`. The paths are sorted by length in a descending manner (element 0 is longest).
     """
 
-    def _collect_all_paths(t: DepTree):
-        return [(*_collect_all_paths(d), t.head) for d in t.deps]
+    # TODO: Make this a Dijkstra/similar implementation instead. This is so slow it's funny.
+    def _collect_all_paths(t: DepTree, lvl=0):
+        """
+        Returns a flat list of all paths that lead from t's root to a leaf.
+        """
+        if lvl > 30 or not t.deps:
+            return [(t.head, )]
+
+        # List of flat lists of paths
+        deps_paths = [_collect_all_paths(d, lvl + 1) for d in t.deps]
+        return [(*path, t.head) for dep_paths in deps_paths for path in dep_paths]
 
     def _trim_path(path):
         valid_input = False
@@ -250,14 +259,17 @@ def e2e_paths_sorted_desc(tree: DepTree, input_topic_patterns):
         if not valid_input:
             return None
 
-        if i == 0 or not isinstance(path[i - 1], TrCallbackInstance):
-            print(f"[WARN] Message has no publishing callback in dep tree.")
-            return path[i:]  # Return path from first message that fits an input topic pattern
+        if i == 0:
+            #print(end=".")
+            return None
+        if not isinstance(path[i - 1], TrCallbackInstance):
+            #print(end="#")
+            return None
 
         return path[i - 1:]  # Return path from its publishing callback if it exists
 
     paths = _collect_all_paths(tree)
-    paths = list(filter(lambda p: p is not None, map(_trim_path, tqdm(paths, desc="_trim_path"))))
+    paths = list(filter(None, map(_trim_path, paths)))
     paths.sort(key=lambda path: path[-1].timestamp - path[0].timestamp, reverse=True)
     return paths
 
@@ -328,7 +340,7 @@ def _repr_path(path: List[TrPublishInstance | TrCallbackInstance]):
 def aggregate_e2e_paths(paths: List[List[TrPublishInstance | TrCallbackInstance]]):
     path_cohorts = defaultdict(list)
 
-    for path in paths:
+    for path in tqdm(paths, mininterval=5.0, desc="Aggregating E2E path cohorts"):
         key = _repr_path(path)
         path_cohorts[key].append(path)
 

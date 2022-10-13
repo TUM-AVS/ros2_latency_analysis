@@ -40,7 +40,7 @@ def e2e_breakdown_inst_stack(*paths: List[E2EBreakdownItem]):
     fig.suptitle("Detailed E2E Latency Path Breakdown")
 
     bottom = 0
-    for i in range(len(paths)):
+    for i in range(len(paths[0])):
         e2e_items = [path[i] for path in paths]
         durations = np.array([item.duration for item in e2e_items])
         ax.bar(range(len(paths)), durations, bottom=bottom)
