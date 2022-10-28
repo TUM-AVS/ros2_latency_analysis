@@ -260,10 +260,10 @@ def e2e_paths_sorted_desc(tree: DepTree, input_topic_patterns):
             return None
 
         if i == 0:
-            #print(end=".")
-            return None
+            # print(end=".")
+            return path  # Return whole path, even if there is not publishing callback
         if not isinstance(path[i - 1], TrCallbackInstance):
-            #print(end="#")
+            # print(end="#")
             return None
 
         return path[i - 1:]  # Return path from its publishing callback if it exists
@@ -295,11 +295,13 @@ def e2e_latency_breakdown(path: list):
             case TrCallbackInstance() as cb_inst:
                 match last_inst:
                     case TrCallbackInstance() as cb_inst_prev:
+                        ret_list.append(E2EBreakdownItem("cpu", cb_inst_prev.duration,
+                                                         (cb_inst_prev, cb_inst_prev)))
                         ret_list.append(E2EBreakdownItem("idle", cb_inst.t_start - cb_inst_prev.t_end,
                                                          (cb_inst_prev, cb_inst)))
                     case TrPublishInstance() as pub_inst_prev:
                         ret_list.append(E2EBreakdownItem("dds", cb_inst.t_start - pub_inst_prev.timestamp,
-                                                         (pub_inst_prev, inst)))
+                                                         (pub_inst_prev, cb_inst)))
             case TrPublishInstance() as pub_inst:
                 match last_inst:
                     case TrCallbackInstance() as cb_inst_prev:
