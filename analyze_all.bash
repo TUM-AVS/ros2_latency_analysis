@@ -1,7 +1,12 @@
 #!/bin/bash
 
+if [ -z $1 ]; then
+    echo "Usage: $0 </path/to/ros/workspace>"
+    exit 1
+fi
+
 cur_dir=$PWD
-ros_project_dir="/home/max/Projects/autoware"
+ros_project_dir=$1
 
 source_dir="$ros_project_dir/src"
 build_dir="$ros_project_dir/build"
