@@ -1,6 +1,6 @@
 # MA Autoware Trace Analysis
 
-Automatically extract data dependencies and end-to-end (E2E) latencies from ROS2 trace data.
+Automatically extract data dependencies and end-to-end (E2E) latencies from ROS2 trace data and source code.
 
 ## Prerequisites
 * Python 3.10 or newer (this is crucial!)
@@ -8,6 +8,12 @@ Automatically extract data dependencies and end-to-end (E2E) latencies from ROS2
 * [ROS2 Tracing](https://github.com/ros2/ros2_tracing)
 * [Tracetools Analysis](https://gitlab.com/ros-tracing/tracetools_analysis)
 * `python3-babeltrace` and `python3-lttng`, e.g. via `sudo apt install`, **for Python 3.10** (this requires either Ubuntu 22.04 or custom installation)
+
+## Requirements for Optional Features
+* `ros2_internal_dependency_analyzer` for finding intra-node dependencies via static analysis, which can then be
+  utilized by this tool
+* `ros2 multitopic bw` for recording message sizes which can then be processed by this tool
+
 
 ## Installation
 
@@ -36,7 +42,9 @@ E2E_ENABLED = True
 ```shell
 # In the shell of your choice (choose Bash!):
 # Each setting is named the same as in the notebook but prefixed by "ANA_NB_".
-ANA_NB_TR_PATH="path/to/trace/dir"
+# For strings, quotes have to be included IN THE VARIABLE VALUE, i.e. double quotation "'...'" 
+# has to be used in most cases
+ANA_NB_TR_PATH="'path/to/trace/dir'"
 ANA_NB_E2E_ENABLED="True"
 ```
 
@@ -46,7 +54,7 @@ from the command line:
 jupyter nbconvert --to notebook --execute trace-analysis.ipynb
 ```
 
-nbconvert can also be called from Python directly, 
-read more info on nbconvert [here](https://nbconvert.readthedocs.io/en/latest/execute_api.html).
+The notebook also supports invocation via [Papermill](https://papermill.readthedocs.io/en/latest/).
 
-The output files are found in the configured output dir (default: `out/`). Inputs are processed and cached in `cache/`.
+The output files are found in the configured output dir (default: `out/`). 
+Inputs are processed and cached in `cache/`.

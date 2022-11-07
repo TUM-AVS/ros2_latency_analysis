@@ -347,3 +347,27 @@ def aggregate_e2e_paths(paths: List[List[TrPublishInstance | TrCallbackInstance]
         path_cohorts[key].append(path)
 
     return path_cohorts
+
+
+def label_latency_item(item: E2EBreakdownItem):
+    match item.type:
+        case "cpu":
+            return f"{_repr(item.location[0])}"
+        case "idle":
+            cb_inst: TrCallbackInstance = item.location[0]
+            owner = cb_inst.callback_obj.owner
+            match owner:
+                case TrTimer() as tmr:
+                    tmr: TrTimer
+                    node_name = tmr.node.path
+                case TrSubscriptionObject() as sub:
+                    sub: TrSubscriptionObject
+                    node_name = sub.subscription.node.path
+                case _:
+                    raise TypeError()
+            return f"{node_name}"
+        case "dds":
+            msg_inst: TrPublishInstance = item.location[0]
+            return f"{msg_inst.publisher.topic_name}"
+        case _:
+            return ValueError()
