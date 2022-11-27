@@ -26,45 +26,40 @@ class OrchestratorStateMachine:
         def _raise():
             raise ValueError(f"Symbol {symbol} has no valid transition in state {self._state}")
 
-        match self._state:
-            case OrchestratorState.Initializing:
-                match symbol:
-                    case AutowareState.WAITING_FOR_ROUTE:
-                        self._state = OrchestratorState.ReadyToPlan
-                        return True
-                    case AutowareState.INITIALIZING_VEHICLE:
-                        pass
-                    case _:
-                        _raise()
-            case OrchestratorState.ReadyToPlan:
-                match symbol:
-                    case AutowareState.WAITING_FOR_ENGAGE:
-                        self._state = OrchestratorState.ReadyToEngage
-                        return True
-                    case AutowareState.PLANNING | AutowareState.WAITING_FOR_ROUTE:
-                        pass
-                    case _:
-                        _raise()
-            case OrchestratorState.ReadyToEngage:
-                match symbol:
-                    case AutowareState.DRIVING:
-                        self._state = OrchestratorState.Driving
-                        return True
-                    case AutowareState.WAITING_FOR_ENGAGE:
-                        pass
-                    case _:
-                        _raise()
-            case OrchestratorState.Driving:
-                match symbol:
-                    case AutowareState.ARRIVAL_GOAL | AutowareState.WAITING_FOR_ROUTE:
-                        self._state = OrchestratorState.Done
-                        return True
-                    case AutowareState.DRIVING:
-                        pass
-                    case _:
-                        _raise()
-            case _:
-                pass
+        if self._state == OrchestratorState.Initializing:
+                if symbol == AutowareState.WAITING_FOR_ROUTE:
+                    self._state = OrchestratorState.ReadyToPlan
+                    return True
+                elif symbol == AutowareState.INITIALIZING_VEHICLE:
+                    pass
+                else:
+                    _raise()
+        elif self._state == OrchestratorState.ReadyToPlan:
+                if symbol == AutowareState.WAITING_FOR_ENGAGE:
+                    self._state = OrchestratorState.ReadyToEngage
+                    return True
+                elif symbol == AutowareState.PLANNING or symbol ==  AutowareState.WAITING_FOR_ROUTE:
+                    pass
+                else:
+                    _raise()
+        elif self._state == OrchestratorState.ReadyToEngage:
+                if symbol == AutowareState.DRIVING:
+                    self._state = OrchestratorState.Driving
+                    return True
+                elif symbol == AutowareState.WAITING_FOR_ENGAGE:
+                    pass
+                else:
+                    _raise()
+        elif self._state == OrchestratorState.Driving:
+                if symbol == AutowareState.ARRIVAL_GOAL or symbol ==  AutowareState.WAITING_FOR_ROUTE:
+                    self._state = OrchestratorState.Done
+                    return True
+                elif symbol == AutowareState.DRIVING:
+                    pass
+                else:
+                    _raise()
+        else:
+            pass
         
         return False
 
@@ -99,29 +94,28 @@ class AwOrchestrator(Node):
         rclpy.shutdown()
 
     def state_change_callback(self, state: OrchestratorState):
-        match state:
-            case OrchestratorState.ReadyToPlan:
-                msg = PoseStamped()
-                msg.header.stamp = rclpy.Time.now()
-                msg.header.frame_id = "map"
+        if state == OrchestratorState.ReadyToPlan:
+            msg = PoseStamped()
+            msg.header.stamp = rclpy.Time.now()
+            msg.header.frame_id = "map"
 
-                msg.pose.position.x = 81542.3515625
-                msg.pose.position.y = 50296.1875
-                msg.pose.position.z = 0.0
+            msg.pose.position.x = 81542.3515625
+            msg.pose.position.y = 50296.1875
+            msg.pose.position.z = 0.0
 
-                msg.pose.orientation.x = 0.0
-                msg.pose.orientation.y = 0.0
-                msg.pose.orientation.z = 0.7615288806503434
-                msg.pose.orientation.w = 0.6481309774539673
-                self.goal_publisher.publish()
-                self.get_logger().info("Published goal message")
-            case OrchestratorState.ReadyToEngage:
-                req = Engage.Request()
-                req.engage =  True
-                self.engage_client.call(req)
-                self.get_logger().info("Engage service called")
-            case OrchestratorState.Done:
-                pass
+            msg.pose.orientation.x = 0.0
+            msg.pose.orientation.y = 0.0
+            msg.pose.orientation.z = 0.7615288806503434
+            msg.pose.orientation.w = 0.6481309774539673
+            self.goal_publisher.publish()
+            self.get_logger().info("Published goal message")
+        elif state == OrchestratorState.ReadyToEngage:
+            req = Engage.Request()
+            req.engage =  True
+            self.engage_client.call(req)
+            self.get_logger().info("Engage service called")
+        elif state == OrchestratorState.Done:
+            pass
 
     def launch_aw(self):
         workdir = os.path.expanduser(f"~/Max_MA/autoware")

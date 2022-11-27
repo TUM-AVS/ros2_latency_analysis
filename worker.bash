@@ -9,7 +9,7 @@ case $role in
     aw)
     echo "Launching Autoware orchestrator"
     ros2 run aw_orchestrator &
-    python3.10 scenario_runner.py -c config/aw_awsim.yml
+    python3 scenario_runner.py -c config/aw_awsim.yml
     ;;
     sim)
     echo "Launching Simulator orchestrator"
