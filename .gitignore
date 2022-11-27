@@ -1,0 +1,8 @@
+.idea/
+.vscode/
+build/
+config/
+install/
+artifacts/
+log/
+src/external/
