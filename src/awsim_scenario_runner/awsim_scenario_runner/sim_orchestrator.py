@@ -9,7 +9,7 @@ class SimOrchestrator(Node):
     def __init__(self):
         super().__init__('sim_orchestrator')
         
-        self.shutdown_sub = self.create_subscription(Empty, "/ma_awsim_scenario_runner/shutdown", self.shutdown_callback)
+        self.shutdown_sub = self.create_subscription(Empty, "/ma_awsim_scenario_runner/shutdown", self.shutdown_callback, 1)
         self.launch_sim()
 
     def launch_sim(self):

@@ -73,7 +73,7 @@ class AwOrchestrator(Node):
             self.aw_state_callback,
             10)
 
-        self.shutdown_sub = self.create_subscription(Empty, "/ma_awsim_scenario_runner/shutdown", self.shutdown_callback)
+        self.shutdown_sub = self.create_subscription(Empty, "/ma_awsim_scenario_runner/shutdown", self.shutdown_callback, 10)
 
         self.goal_publisher = self.create_publisher(PoseStamped, '/planning/mission_planning/goal', 1)
         self.engage_client = self.create_client(Engage, '/api/external/set/engage')
