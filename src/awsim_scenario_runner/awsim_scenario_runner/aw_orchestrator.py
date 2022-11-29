@@ -30,7 +30,7 @@ class OrchestratorStateMachine:
                 if symbol == AutowareState.WAITING_FOR_ROUTE:
                     self._state = OrchestratorState.ReadyToPlan
                     return True
-                elif symbol == AutowareState.INITIALIZING_VEHICLE:
+                elif symbol == AutowareState.INITIALIZING:
                     pass
                 else:
                     _raise()
@@ -51,7 +51,7 @@ class OrchestratorStateMachine:
                 else:
                     _raise()
         elif self._state == OrchestratorState.Driving:
-                if symbol == AutowareState.ARRIVAL_GOAL or symbol ==  AutowareState.WAITING_FOR_ROUTE:
+                if symbol == AutowareState.ARRIVED_GOAL or symbol ==  AutowareState.WAITING_FOR_ROUTE:
                     self._state = OrchestratorState.Done
                     return True
                 elif symbol == AutowareState.DRIVING:
