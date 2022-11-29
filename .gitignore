@@ -1,7 +1,6 @@
 .idea/
 .vscode/
 build/
-config/
 install/
 artifacts/
 log/
