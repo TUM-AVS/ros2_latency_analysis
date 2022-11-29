@@ -79,7 +79,6 @@ class AwOrchestrator(Node):
         self.engage_client = self.create_client(Engage, '/api/external/set/engage')
         
         self.state_machine = OrchestratorStateMachine()
-        self.launch_aw()
 
     def aw_state_callback(self, msg):
         old_state = self.state_machine._state
@@ -116,10 +115,6 @@ class AwOrchestrator(Node):
             self.get_logger().info("Engage service called")
         elif state == OrchestratorState.Done:
             pass
-
-    def launch_aw(self):
-        workdir = os.path.expanduser(f"~/Max_MA/autoware")
-        self.aw_proc = subprocess.Popen(["ros2"], cwd=workdir)
 
 def main(args=None):
     rclpy.init(args=args)
