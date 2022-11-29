@@ -106,7 +106,7 @@ class AwOrchestrator(Node):
             msg.pose.orientation.y = 0.0
             msg.pose.orientation.z = 0.7615288806503434
             msg.pose.orientation.w = 0.6481309774539673
-            self.goal_publisher.publish()
+            self.goal_publisher.publish(msg)
             self.get_logger().info("Published goal message")
         elif state == OrchestratorState.ReadyToEngage:
             req = Engage.Request()

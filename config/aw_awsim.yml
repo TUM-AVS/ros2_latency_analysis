@@ -5,20 +5,20 @@ tasks:
       - cd ~/Max_MA/autoware
       - source install/setup.bash
       - ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False 2>&1 | tee autoware.log
-    artifact_location: "~/edgar/autoware/autoware.log"
+    artifact_location: "~/Max_MA/autoware/autoware.log"
     start_deps:
       - tracing
   trace_cpu_usage:
     commands:
-      - top -b -d 0.01 | grep -F '%Cpu(s)' > ~/edgar/autoware/cpu_usage.log
-    artifact_location: "~/edgar/autoware/cpu_usage.log"
+      - top -b -d 0.01 | grep -F '%Cpu(s)' > ~/Max_MA/autoware/cpu_usage.log
+    artifact_location: "~/Max_MA/autoware/cpu_usage.log"
     start_debs:
       - autoware
       - tracing
   trace_memory_usage:
     commands:
-      - free -s 0.01 > ~/edgar/autoware/memory_usage.log
-    artifact_location: "~/edgar/autoware/memory_usage.log"
+      - free -s 0.01 > ~/Max_MA/autoware/memory_usage.log
+    artifact_location: "~/Max_MA/autoware/memory_usage.log"
     start_debs:
       - autoware
       - tracing
@@ -34,7 +34,7 @@ tasks:
     start_deps:
       - autoware
       - tracing
-    artifact_location: "~/Max_MA/runner.log"
+    artifact_location: "~/Max_MA/scenario_runner/runner.log"
 startup:
   commands:
     - pstree -p -s -T -c -a $$
@@ -50,4 +50,4 @@ cleanup:
     - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
     - pgrep -f 'autoware|http\.server|^python3 \./scenario_runner.py' | grep -v -x -F -e $$ -e $PPID | xargs kill
     - echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
-runtime_s: 60
+runtime_s: 120
