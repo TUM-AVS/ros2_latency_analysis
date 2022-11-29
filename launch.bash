@@ -11,7 +11,7 @@ aw_hostname=edgar-sim-dev
 aw_username=adlink
 aw_rootdir=/home/$aw_username/Max_MA
 
-sim_hostname=edgar-gpu
+sim_hostname=sim-SYS-7049GP-TRT
 sim_username=sim
 sim_rootdir=/home/$sim_username/Max_MA
 
@@ -19,5 +19,5 @@ sim_rootdir=/home/$sim_username/Max_MA
 # Script Execution
 #################################################
 
-ssh -t ${sim_username}@${sim_hostname} "screen -S sim_orchestrator -d -m ${sim_workdir}/scenario_runner/worker.bash sim"
-ssh -t ${aw_username}@${aw_hostname} "screen -S aw_orchestrator -d -m ${aw_workdir}/scenario_runner/worker.bash aw"
+ssh -t ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator -d -m /home/sim/Max_MA/scenario_runner/worker.bash sim"
+ssh -t ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator -d -m /home/adlink/Max_MA/scenario_runner/worker.bash aw"

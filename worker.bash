@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd $(dirname $(basename -- $0))
+cd $HOME/Max_MA/scenario_runner
 role=$1
 export ROS_DOMAIN_ID=69
 source install/setup.bash
