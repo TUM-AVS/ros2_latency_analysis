@@ -45,7 +45,7 @@ startup:
     - echo 3000000 | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed
 cleanup:
   commands:
-    - ros2 topic pub -1 -w 0 /ma_awsim_scenario_runner/shutdown std_msgs/msg/Empty
+    - ros2 topic pub -1 /ma_awsim_scenario_runner/shutdown std_msgs/msg/Empty
     - pstree -p -s -T -c -a $$
     - pkill -f ros --signal SIGINT
     - timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros
