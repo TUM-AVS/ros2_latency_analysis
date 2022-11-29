@@ -95,7 +95,7 @@ class AwOrchestrator(Node):
     def state_change_callback(self, state: OrchestratorState):
         if state == OrchestratorState.ReadyToPlan:
             msg = PoseStamped()
-            msg.header.stamp = rclpy.Time.now()
+            msg.header.stamp = self.get_clock().now().to_msg()
             msg.header.frame_id = "map"
 
             msg.pose.position.x = 81542.3515625
