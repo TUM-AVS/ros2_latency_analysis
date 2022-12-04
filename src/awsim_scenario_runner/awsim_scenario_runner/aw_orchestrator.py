@@ -3,6 +3,7 @@ import subprocess
 import rclpy
 from rclpy.node import Node
 from enum import Enum
+from rclpy.duration import Duration
 
 from autoware_auto_system_msgs.msg import AutowareState
 from tier4_external_api_msgs.srv import Engage
@@ -77,6 +78,9 @@ class AwOrchestrator(Node):
 
         self.goal_publisher = self.create_publisher(PoseStamped, '/planning/mission_planning/goal', 1)
         self.engage_client = self.create_client(Engage, '/api/external/set/engage')
+        self.disengage_timer = self.create_timer(.1, self.disengage_check)
+        self.engaged_time = None
+        self.disengage_delay = Duration(seconds=60)  # seconds after engaging
         
         self.state_machine = OrchestratorStateMachine()
 
@@ -112,9 +116,22 @@ class AwOrchestrator(Node):
             req = Engage.Request()
             req.engage =  True
             self.engage_client.call(req)
-            self.get_logger().info("Engage service called")
+            self.get_logger().info("Engage service called (engage)")
+            self.engaged_time = self.get_clock().now()
         elif state == OrchestratorState.Done:
             pass
+    
+    def disengage_check(self):
+        if self.engaged_time is None:
+            return
+
+        now = self.get_clock().now()
+        if now >= self.engaged_time + self.disengage_delay:
+            req = Engage.Request()
+            req.engage =  False
+            self.engage_client.call(req)
+            self.get_logger().info("Engage service called (disengage)")
+            self.engaged_time = None
 
 def main(args=None):
     rclpy.init(args=args)
