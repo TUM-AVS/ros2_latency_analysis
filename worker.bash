@@ -10,6 +10,8 @@ case $role in
     echo "Launching Autoware orchestrator"
     ros2 run awsim_scenario_runner aw_orchestrator &
     python3 scenario_runner.py -c config/aw_awsim.yml ROS_DOMAIN_ID:=69
+    rm artifacts.zip
+    zip -r1 artifacts.zip artifacts/aw_awsim
     ;;
     sim)
     echo "Launching Simulator orchestrator"
