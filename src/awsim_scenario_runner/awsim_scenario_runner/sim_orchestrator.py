@@ -26,7 +26,6 @@ class SimOrchestrator(Node):
                 self.get_logger().warning(f"Simulator exited with code {return_code}")
         
         self.destroy_node()
-        rclpy.shutdown()
 
 def main(args=None):
     rclpy.init(args=args)
@@ -34,11 +33,6 @@ def main(args=None):
     orchestrator = SimOrchestrator()
 
     rclpy.spin(orchestrator)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    orchestrator.destroy_node()
     rclpy.shutdown()
 
 
