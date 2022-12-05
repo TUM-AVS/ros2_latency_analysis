@@ -56,16 +56,18 @@ class TaskManager:
             self.start_order += can_start
 
     def run(self):
-        self.logger.info("SETUP")
+        self.logger.info("[RUNNER] SETUP")
         if self.startup_task:
             self.startup_task.start()
             while self._state == RunnerState.SETUP:
                 self.startup_task.poll()
                 if self.startup_task.state().value >= TaskState.STOPPED.value:
                     self._state = RunnerState.STARTUP
+        else:
+            self._state = RunnerState.STARTUP
 
         currently_starting = None
-        self.logger.info("STARTUP")
+        self.logger.info("[RUNNER] STARTUP")
         while self._state == RunnerState.STARTUP:
             for task_name, task in self.tasks.items():
                 task.poll()
@@ -82,7 +84,7 @@ class TaskManager:
             runtime_str = "until all tasks terminate (no runtime given in config)"
         else:
             runtime_str = f"for {self.runtime_s:.1f}s"
-        self.logger.info(f"RUNNING {runtime_str}")
+        self.logger.info(f"[RUNNER] RUNNING {runtime_str}")
         all_terminated = False
         while self._state == RunnerState.RUNNING:
             for task in self.tasks.values():
@@ -94,11 +96,7 @@ class TaskManager:
             if all_terminated or runtime_over:
                 self._state = RunnerState.TEARDOWN
 
-        self.logger.info(f"TEARDOWN: {'all tasks finished' if all_terminated else 'runtime is over'}")
-        if self.cleanup_task:
-            self.cleanup_task.start()
-            while self.cleanup_task.state().value < TaskState.STOPPED.value:
-                self.cleanup_task.poll()
+        self.logger.info(f"[RUNNER] TEARDOWN: {'all tasks finished' if all_terminated else 'runtime is over'}")
 
         while self._state == RunnerState.TEARDOWN:
             for task in self.tasks.values():
@@ -112,15 +110,22 @@ class TaskManager:
             if all(t.state().value >= TaskState.STOPPED.value for t in self.tasks.values()):
                 self._state = RunnerState.STOPPED
 
-        self.logger.info("STOPPED")
+        self.logger.info("[RUNNER] STOPPED")
+
+        if self.cleanup_task:
+            self.logger.info("[RUNNER] Commencing CLEANUP")
+            self.cleanup_task.start()
+            while self.cleanup_task.state().value < TaskState.STOPPED.value:
+                self.cleanup_task.poll()
+            self.logger.info("[RUNNER] Finished CLEANUP")
 
         run_dir = f"artifacts/{self.cfg_name}"
-        self.logger.info(f"Copying artifacts to {os.path.abspath(run_dir)}")
+        self.logger.info(f"[RUNNER] Copying artifacts to {os.path.abspath(run_dir)}")
         shutil.rmtree(run_dir, ignore_errors=True)
         os.makedirs(run_dir)
         for task in self.tasks.values():
             task.copy_artifacts(run_dir)
-        self.logger.info("DONE")
+        self.logger.info("[RUNNER] DONE")
 
 
 def parse_config(cfg_name, cfg_dict, env_vars):
@@ -171,14 +176,14 @@ class Task:
         self._line_actions = []
 
     def copy_artifacts(self, target_dir):
-        self.logger.debug(f"Copy artifacts called for {target_dir}")
+        self.logger.debug(f"[RUNNER] Copy artifacts called for {target_dir}")
         if not self.artifacts_loc:
             return 0
 
         task_dir = os.path.join(target_dir, self.name)
         os.makedirs(task_dir)
 
-        self.logger.info(f"Copying {self.artifacts_loc} to {task_dir}")
+        self.logger.info(f"[RUNNER] Copying {self.artifacts_loc} to {task_dir}")
         cp = subprocess.Popen(["cp", "-r", self.artifacts_loc, task_dir])
         return cp.wait(60)
 
@@ -189,7 +194,7 @@ class Task:
         try:
             new_lines = self.shell.stdout.readlines()
         except Exception:
-            self.logger.error(f"pipe closed")
+            self.logger.error(f"[RUNNER] pipe closed")
             return
         for line in new_lines:
             self.logger.info(f"[OUT] {line.rstrip()}")
@@ -214,11 +219,11 @@ class Task:
             pass
         elif shell_status == 0:  # exited (code 0)
             if self._state.value < TaskState.STOPPED.value:
-                self.logger.info("stopped")
+                self.logger.info("[RUNNER] stopped")
             self._state = TaskState.STOPPED
         else:
             if self._state.value < TaskState.STOPPED.value:
-                self.logger.info("crashed")
+                self.logger.info("[RUNNER] crashed")
             self._state = TaskState.CRASHED
 
         return self._state
@@ -227,7 +232,7 @@ class Task:
         def action(lines: list):
             while lines and (line := lines.pop(0)):
                 if line_content in line:
-                    self.logger.info(f"found line containing '{line_content}'")
+                    self.logger.info(f"[RUNNER] found line containing '{line_content}'")
                     return lines, True
             return [], False
 
@@ -245,7 +250,7 @@ class Task:
         self._line_actions.append(action)
 
     def _set_started(self):
-        self.logger.info("ready")
+        self.logger.info("[RUNNER] ready")
         self._state = TaskState.RUNNING
 
     def _do_action(self, callback):
@@ -259,7 +264,7 @@ class Task:
         if self.state() != TaskState.INITIALIZED:
             return True
         self._state = TaskState.STARTING
-        self.logger.info("starting...")
+        self.logger.info("[RUNNER] starting...")
 
         env_commands = [f"export {k}={v}" for k, v in self.env.items()]
         command_str = '; '.join(env_commands + self.commands)
@@ -275,13 +280,13 @@ class Task:
         os.set_blocking(self.shell.stdout.fileno(), False)
         self.shell.stdin.write(command_str + '; exit 0\n')
 
-        self.logger.debug("shell started")
+        self.logger.debug("[RUNNER] shell started")
 
     def stop(self):
         if self.state().value >= TaskState.STOPPING.value:
             return
         self._state = TaskState.STOPPING
-        self.logger.info("stopping")
+        self.logger.info("[RUNNER] stopping")
         self.shell.send_signal(signal.SIGINT)
 
     def __str__(self):
@@ -345,7 +350,7 @@ def run(config_path, env):
 
     for env_var, value in env.items():
         os.environ[env_var] = value
-        logger.debug(f"{env_var}={value}")
+        logger.debug(f"[RUNNER][ENV] {env_var}={value}")
 
     try:
         with open(config_path) as f:
