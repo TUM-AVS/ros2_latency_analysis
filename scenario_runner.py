@@ -182,8 +182,12 @@ class Task:
         os.makedirs(task_dir)
 
         self.logger.info(f"[RUNNER] Copying {self.artifacts_loc} to {task_dir}")
-        cp = subprocess.Popen(["cp", "-r", self.artifacts_loc, task_dir])
-        return cp.wait(60)
+
+        try:
+            return subprocess.run(["cp", "-r", self.artifacts_loc, task_dir], timeout=60).returncode
+        except subprocess.TimeoutExpired:
+            self.logger.error(f"[RUNNER] Copying timed out, killed copy process.")
+            return 1
 
     def poll(self):
         if not self.shell:
