@@ -94,7 +94,6 @@ class AwOrchestrator(Node):
     
     def shutdown_callback(self, _):
         self.destroy_node()
-        rclpy.shutdown()
 
     def state_change_callback(self, state: OrchestratorState):
         if state == OrchestratorState.ReadyToPlan:
@@ -139,10 +138,6 @@ def main(args=None):
     orchestrator = AwOrchestrator()
 
     rclpy.spin(orchestrator)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
     orchestrator.destroy_node()
     rclpy.shutdown()
 
