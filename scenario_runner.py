@@ -6,6 +6,7 @@ import os.path
 import shutil
 import subprocess
 import sys
+import signal
 import time
 import traceback
 from datetime import datetime, timedelta
@@ -281,6 +282,7 @@ class Task:
             return
         self._state = TaskState.STOPPING
         self.logger.info("stopping")
+        self.shell.send_signal(signal.SIGINT)
 
     def __str__(self):
         return f"Task(name={self.name})"
