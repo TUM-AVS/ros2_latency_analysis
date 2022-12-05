@@ -40,9 +40,9 @@ ssh-copy-id -i $ssh_id ${aw_username}@${aw_hostname}
 # Script Execution
 #################################################
 
-ssh -t -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator /home/sim/Max_MA/scenario_runner/worker.bash sim" &
+ssh -tt -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator /home/sim/Max_MA/scenario_runner/worker.bash sim" &
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
-ssh -t -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator /home/adlink/Max_MA/scenario_runner/worker.bash aw" &
+ssh -tt -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator /home/adlink/Max_MA/scenario_runner/worker.bash aw" &
 echo "[LAUNCHER] Launched aw worker on ${aw_username}@${aw_hostname}"
 
 if [ "$1" = "rviz" ]
