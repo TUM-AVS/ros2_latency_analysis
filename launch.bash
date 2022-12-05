@@ -40,9 +40,9 @@ ssh-copy-id -i $ssh_id ${aw_username}@${aw_hostname}
 # Script Execution
 #################################################
 
-ssh -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator /home/sim/Max_MA/scenario_runner/worker.bash sim" &
+ssh -t -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator /home/sim/Max_MA/scenario_runner/worker.bash sim" &
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
-ssh -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator /home/adlink/Max_MA/scenario_runner/worker.bash aw" &
+ssh -t -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator /home/adlink/Max_MA/scenario_runner/worker.bash aw" &
 echo "[LAUNCHER] Launched aw worker on ${aw_username}@${aw_hostname}"
 
 if [ "$1" = "rviz" ]
@@ -57,6 +57,9 @@ echo "[LAUNCHER] Waiting for workers to finish..."
 wait
 
 echo "[LAUNCHER] Done."
-echo "[LAUNCHER] Copying artifacts from aw worker..."
-scp -i "$ssh_id" ${aw_username}@${aw_hostname}:${aw_rootdir}/scenario_runner/artifacts.zip artifacts.zip
+
+artifacts_filename=artifacts_$(date "+%Y%m%d_%H%M%S").zip
+echo "[LAUNCHER] Copying artifacts from aw worker to '$artifacts_filename'..."
+scp -i "$ssh_id" ${aw_username}@${aw_hostname}:${aw_rootdir}/scenario_runner/artifacts.zip "$artifacts_filename" || exit 1
 echo "[LAUNCHER] Done."
+exit 0
