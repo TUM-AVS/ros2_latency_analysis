@@ -8,20 +8,6 @@ tasks:
     artifact_location: "~/Max_MA/autoware/autoware.log"
     start_deps:
       - tracing
-  trace_cpu_usage:
-    commands:
-      - top -b -d 0.01 | grep -F '%Cpu(s)' > ~/Max_MA/autoware/cpu_usage.log
-    artifact_location: "~/Max_MA/autoware/cpu_usage.log"
-    start_debs:
-      - autoware
-      - tracing
-  trace_memory_usage:
-    commands:
-      - free -s 0.01 > ~/Max_MA/autoware/memory_usage.log
-    artifact_location: "~/Max_MA/autoware/memory_usage.log"
-    start_debs:
-      - autoware
-      - tracing
   tracing:
     commands:
       - cd ~/Max_MA/autoware

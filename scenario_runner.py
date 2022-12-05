@@ -97,6 +97,12 @@ class TaskManager:
                 self._state = RunnerState.TEARDOWN
 
         self.logger.info(f"[RUNNER] TEARDOWN: {'all tasks finished' if all_terminated else 'runtime is over'}")
+        if self.cleanup_task:
+            self.logger.info("[RUNNER] Commencing CLEANUP")
+            self.cleanup_task.start()
+            while self.cleanup_task.state().value < TaskState.STOPPED.value:
+                self.cleanup_task.poll()
+            self.logger.info("[RUNNER] Finished CLEANUP")
 
         while self._state == RunnerState.TEARDOWN:
             for task in self.tasks.values():
@@ -111,13 +117,6 @@ class TaskManager:
                 self._state = RunnerState.STOPPED
 
         self.logger.info("[RUNNER] STOPPED")
-
-        if self.cleanup_task:
-            self.logger.info("[RUNNER] Commencing CLEANUP")
-            self.cleanup_task.start()
-            while self.cleanup_task.state().value < TaskState.STOPPED.value:
-                self.cleanup_task.poll()
-            self.logger.info("[RUNNER] Finished CLEANUP")
 
         run_dir = f"artifacts/{self.cfg_name}"
         self.logger.info(f"[RUNNER] Copying artifacts to {os.path.abspath(run_dir)}")
@@ -287,7 +286,6 @@ class Task:
             return
         self._state = TaskState.STOPPING
         self.logger.info("[RUNNER] stopping")
-        self.shell.send_signal(signal.SIGINT)
 
     def __str__(self):
         return f"Task(name={self.name})"
