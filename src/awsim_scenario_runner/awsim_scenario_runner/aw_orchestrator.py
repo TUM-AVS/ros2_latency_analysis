@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import rclpy
 from rclpy.node import Node
 from enum import Enum
@@ -89,11 +90,11 @@ class AwOrchestrator(Node):
         has_state_changed = self.state_machine.update(msg.state)
 
         if has_state_changed:
-            self.get_logger().info(f'Orchestrator state changed: {old_state.name} -> {self.state_machine._state.name} through AW state {msg.state}')
+            self.get_logger().info(f'[Orchestrator] State changed: {old_state.name} -> {self.state_machine._state.name} through AW state {msg.state}')
             self.state_change_callback(self.state_machine._state)
     
     def shutdown_callback(self, _):
-        self.destroy_node()
+        sys.exit(0)
 
     def state_change_callback(self, state: OrchestratorState):
         if state == OrchestratorState.ReadyToPlan:
@@ -110,12 +111,12 @@ class AwOrchestrator(Node):
             msg.pose.orientation.z = 0.7615288806503434
             msg.pose.orientation.w = 0.6481309774539673
             self.goal_publisher.publish(msg)
-            self.get_logger().info("Published goal message")
+            self.get_logger().info("[Orchestrator] Published goal message")
         elif state == OrchestratorState.ReadyToEngage:
             req = Engage.Request()
             req.engage =  True
             self.engage_client.call(req)
-            self.get_logger().info("Engage service called (engage)")
+            self.get_logger().info("[Orchestrator] Engage service called (engage)")
             self.engaged_time = self.get_clock().now()
         elif state == OrchestratorState.Done:
             pass
@@ -129,7 +130,7 @@ class AwOrchestrator(Node):
             req = Engage.Request()
             req.engage =  False
             self.engage_client.call(req)
-            self.get_logger().info("Engage service called (disengage)")
+            self.get_logger().info("[Orchestrator] Engage service called (disengage)")
             self.engaged_time = None
 
 def main(args=None):
