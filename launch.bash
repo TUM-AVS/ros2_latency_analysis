@@ -40,9 +40,9 @@ ssh-copy-id -i $ssh_id ${aw_username}@${aw_hostname}
 # Script Execution
 #################################################
 
-ssh -tt -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator /home/sim/Max_MA/scenario_runner/worker.bash sim" &
+ssh -tt -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator /home/sim/Max_MA/scenario_runner/worker.bash sim" > /dev/null &
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
-ssh -tt -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator /home/adlink/Max_MA/scenario_runner/worker.bash aw" &
+ssh -tt -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator /home/adlink/Max_MA/scenario_runner/worker.bash aw" > /dev/null &
 echo "[LAUNCHER] Launched aw worker on ${aw_username}@${aw_hostname}"
 
 if [ "$1" = "rviz" ]
@@ -50,7 +50,7 @@ then
     echo "[LAUNCHER] Launching RVIZ"
     source ../autoware/install/setup.bash &&
     export ROS_DOMAIN_ID=69 &&
-    rviz2 -d ../autoware/install/autoware_launch/share/autoware_launch/rviz/autoware.rviz -s ../autoware/install/autoware_launch/share/autoware_launch/rviz/image/autoware.png &
+    rviz2 -d ../autoware/install/autoware_launch/share/autoware_launch/rviz/autoware.rviz -s ../autoware/install/autoware_launch/share/autoware_launch/rviz/image/autoware.png > /dev/null &
 fi
 
 echo "[LAUNCHER] Waiting for workers to finish..."
