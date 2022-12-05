@@ -11,6 +11,7 @@ tasks:
       - "lspci -vvv > $out_dir/lspci.log"
       - "lsmod > $out_dir/lsmod.log"
       - "numastat > $out_dir/numastat.log"
+      - "hostname > $out_dir/hostname.log"
       - "cd ~/edgar/autoware"
       - "vcs custom -n --git --args log --oneline -n 1 > $out_dir/head_commit.log"
       - "vcs status -n > $out_dir/vcs_status.log"
