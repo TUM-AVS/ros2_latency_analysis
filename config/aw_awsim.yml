@@ -1,7 +1,7 @@
 # Max's Master Thesis, please don't modify!
 tasks:
   collect_sysinfo:
-    start_commands:
+    commands:
       - "out_dir=~/Max_MA/scenario_runner/sysinfo"
       - "rm -rf $out_dir"
       - "mkdir $out_dir"
