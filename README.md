@@ -11,4 +11,10 @@ Specifically, the setup includes:
 
 ## Setup
 
-Execute `setup.bash` in the repo's root folder.
+**It is necessary to clone this repo into your home directory and to change its name to `Max_MA`!**
+```bash
+cd ~
+git clone https://gitlab.lrz.de/schmeller/ma-experiment-workspace.git Max_MA
+cd Max_MA
+./setup.bash
+```
