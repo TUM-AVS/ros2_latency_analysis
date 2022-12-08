@@ -183,22 +183,17 @@ namespace AWSIM.RandomTraffic
 
         IEnumerator StartLightingSequences()
         {
-            int i = 0;
-            while (true)
+	    var seq = DefaultLightingSequences()[0];
+            foreach (var groupCommand in seq.GroupLightingOrders)
             {
-                foreach (var groupCommand in lightingSequences[i].GroupLightingOrders)
-                {
+                if (trafficLightGroupPairs.ContainsKey(groupCommand.Group)) {
                     var trafficLightGroup = trafficLightGroupPairs[groupCommand.Group];
                     trafficLightGroup.TurnOffAllLights();
                     trafficLightGroup.SetBulbData(groupCommand.BulbData);
                 }
-
-                yield return new WaitForSeconds(lightingSequences[i].IntervalSec);
-
-                i++;
-                if (i == lightingSequences.Length)
-                    i = 0;
             }
+
+            yield return new WaitForSeconds(seq.IntervalSec);
         }
 
         static bool CompareLayer(LayerMask layerMask, int layer)
@@ -227,18 +222,35 @@ namespace AWSIM.RandomTraffic
             order = new GroupLightingOrder(Group.VehicleTrafficLightGroup1, bulbData);
             orderList.Add(order);
 
-            // Vehicle group2 Red.
+            // Vehicle group2 Green.
             bulbData = new TrafficLight.BulbData(
-                TrafficLight.BulbType.RED_BULB,
-                TrafficLight.BulbColor.RED,
+                TrafficLight.BulbType.GREEN_BULB,
+                TrafficLight.BulbColor.GREEN,
                 TrafficLight.BulbStatus.SOLID_ON);
             order = new GroupLightingOrder(Group.VehicleTrafficLightGroup2, bulbData);
             orderList.Add(order);
 
-            // Pedestrian group1 Green.
+	    // Vehicle group3 Green.
             bulbData = new TrafficLight.BulbData(
                 TrafficLight.BulbType.GREEN_BULB,
                 TrafficLight.BulbColor.GREEN,
+                TrafficLight.BulbStatus.SOLID_ON);
+            order = new GroupLightingOrder(Group.VehicleTrafficLightGroup3, bulbData);
+            orderList.Add(order);
+
+            // Vehicle group4 Green.
+            bulbData = new TrafficLight.BulbData(
+                TrafficLight.BulbType.GREEN_BULB,
+                TrafficLight.BulbColor.GREEN,
+                TrafficLight.BulbStatus.SOLID_ON);
+            order = new GroupLightingOrder(Group.VehicleTrafficLightGroup4, bulbData);
+            orderList.Add(order);
+
+
+            // Pedestrian group1 Red.
+            bulbData = new TrafficLight.BulbData(
+                TrafficLight.BulbType.RED_BULB,
+                TrafficLight.BulbColor.RED,
                 TrafficLight.BulbStatus.SOLID_ON);
             order = new GroupLightingOrder(Group.PedestrianTrafficLightGroup1, bulbData);
             orderList.Add(order);
@@ -251,10 +263,27 @@ namespace AWSIM.RandomTraffic
             order = new GroupLightingOrder(Group.PedestrianTrafficLightGroup2, bulbData);
             orderList.Add(order);
 
+	    // Pedestrian group3 Red.
+            bulbData = new TrafficLight.BulbData(
+                TrafficLight.BulbType.RED_BULB,
+                TrafficLight.BulbColor.RED,
+                TrafficLight.BulbStatus.SOLID_ON);
+            order = new GroupLightingOrder(Group.PedestrianTrafficLightGroup3, bulbData);
+            orderList.Add(order);
+
+            // Pedestrian group4 Red.
+            bulbData = new TrafficLight.BulbData(
+                TrafficLight.BulbType.RED_BULB,
+                TrafficLight.BulbColor.RED,
+                TrafficLight.BulbStatus.SOLID_ON);
+            order = new GroupLightingOrder(Group.PedestrianTrafficLightGroup4, bulbData);
+            orderList.Add(order);
+
             // Create Sequence.
             sequnece = new LightingSequence(15, orderList.ToArray());
             sequenceList.Add(sequnece);
 
+	    /*
             // sequence 2
             // - Pedestrian group1 Green flashing.
             orderList.Clear();
@@ -391,7 +420,7 @@ namespace AWSIM.RandomTraffic
             order = new GroupLightingOrder(Group.VehicleTrafficLightGroup2, bulbData);
             orderList.Add(order);
             sequnece = new LightingSequence(3, orderList.ToArray());
-            sequenceList.Add(sequnece);
+            sequenceList.Add(sequnece);*/
 
             return sequenceList.ToArray();
         }
