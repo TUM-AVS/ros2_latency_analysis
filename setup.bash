@@ -11,9 +11,17 @@ echo "MA Experiment Workspace is configured with:"
 echo "- awsim_ver......: ${awsim_ver}"
 echo "- map_ver........: ${map_ver}"
 echo "- rootdir........: ${rootdir}"
+
 # Ensure project is in the correct location
 test "$(realpath $rootdir)" = "$(realpath /home/$USER/Max_MA)" || (echo "The root directory (currently $rootdir) has to be /home/$USER/Max_MA" && exit 1)
 
+# Install APT packages
+sudo apt-get install screen
+sudo apt-get install lttng-tools lttng-modules-dkms liblttng-ust-dev
+sudo apt-get install python3-babeltrace python3-lttng
+sudo apt-get install numactl
+
+# Ensure ROS2 environment is available during install
 source /opt/ros/galactic/setup.bash
 
 # Clone Autoware and tools
