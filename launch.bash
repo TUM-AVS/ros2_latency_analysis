@@ -7,19 +7,26 @@
 # Config Section
 #################################################
 
-aw_hostname=edgar-sim-dev
-aw_username=adlink
-# Has to be an absolute path with no environment variables etc. other than $aw_username
-aw_rootdir=/home/$aw_username/Max_MA
+# The string after the :- is the default value if the environment variable before it is not set
+aw_hostname=${SC_AW_HOSTNAME:-edgar-sim-dev}
+aw_username=${SC_AW_USERNAME:-adlink}
 
-sim_hostname=sim-SYS-7049GP-TRT
-sim_username=sim
+sim_hostname=${SC_SIM_HOSTNAME:-sim-SYS-7049GP-TRT}
+sim_username=${SC_SIM_USERNAME:-sim}
+
+# Will be generated if not present
+ssh_id=${SC_SSH_ID:-~/.ssh/id_max_ma}
+
+#################################################
+# Properties based on config
+#################################################
+
 # Has to be an absolute path with no environment variables etc. other than $sim_username
 sim_rootdir=/home/$sim_username/Max_MA
-
+# Has to be an absolute path with no environment variables etc. other than $aw_username
+aw_rootdir=/home/$aw_username/Max_MA
 # Local path to the SSH ID file (without .pub) to be used for remote access to the workers
-# Will be generated if not present
-ssh_id=~/.ssh/id_max_ma
+
 
 #################################################
 # Interactive First-Time Setup 
@@ -40,9 +47,9 @@ ssh-copy-id -i $ssh_id ${aw_username}@${aw_hostname}
 # Script Execution
 #################################################
 
-ssh -tt -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile /home/sim/Max_MA/scenario_runner/worker.log -S sim_orchestrator /home/sim/Max_MA/scenario_runner/worker.bash sim" > /dev/null &
+ssh -tt -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator ${sim_rootdir}/scenario_runner/worker.bash sim" > /dev/null &
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
-ssh -tt -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile /home/adlink/Max_MA/scenario_runner/worker.log -S aw_orchestrator /home/adlink/Max_MA/scenario_runner/worker.bash aw" > /dev/null &
+ssh -tt -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator ${aw_rootdir}/scenario_runner/worker.bash aw" > /dev/null &
 echo "[LAUNCHER] Launched aw worker on ${aw_username}@${aw_hostname}"
 
 if [ "$1" = "rviz" ]
