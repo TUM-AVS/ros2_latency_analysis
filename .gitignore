@@ -4,4 +4,7 @@ build/
 install/
 artifacts/
 log/
+sysinfo/
 src/external/
+worker.log
+*.pyc
