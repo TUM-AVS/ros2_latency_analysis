@@ -39,10 +39,12 @@ if [ "$(uname -i)" = "x86_64" ]
 then
     echo "Downloading and unpacking AWSIM"
     awsim_zip_name="AWSIM_${awsim_ver}.zip"
+    rm -f $awsim_zip_name
     wget "https://github.com/mojomex/AWSIM/releases/download/v1.0.1_custom/${awsim_zip_name}"
+    rm -rf AWSIM
     mkdir AWSIM
-    unzip -d AWSIM "${awsim_zip_name}"
-    rm "${awsim_zip_name}"
+    unzip -d AWSIM $awsim_zip_name
+    rm -f $awsim_zip_name
     stat AWSIM/AWSIM.headless.x86_64 > /dev/null
 else
     echo "Skipping AWSIM installation (architecture is not x86_64)."
@@ -51,17 +53,20 @@ fi
 # Download and unpack map files
 echo "Downloading and unpacking map files"
 map_zip_name="nishishinjuku_autoware_map.zip"
+rm -f $map_zip_name
+rm -rf nishishinjuku_autoware_map
 wget "https://github.com/tier4/AWSIM/releases/download/${map_ver}/${map_zip_name}"
-unzip ${map_zip_name}
+unzip $map_zip_name
 stat nishishinjuku_autoware_map > /dev/null
+rm -rf map
 mv nishishinjuku_autoware_map map
-rm ${map_zip_name}
+rm -f $map_zip_name
 
 # Set up Autoware
 echo "Setting up Autoware"
 cd autoware
 ./setup-dev-env.sh
-mkdir src
+mkdir -p src
 vcs import src < autoware.repos
 vcs import src --repos < "$rootdir/tracing.repos"
 rosdep install -y --from-paths src --ignore-src --rosdistro $ROS_DISTRO
