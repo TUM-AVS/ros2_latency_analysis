@@ -137,7 +137,7 @@ def parse_config(cfg_name, cfg_dict, env_vars):
         else:
             task_deps = []
 
-        task_class = TASK_MAP.get(task_name) or Task
+        task_class = TASK_MAP.get(task_name) or GenericTask
         task = task_class(task_name, task_dict, env_vars)
         start_deps[task_name] = task_deps
         tasks[task_name] = task
