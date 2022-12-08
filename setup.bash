@@ -17,7 +17,7 @@ test "$(realpath $rootdir)" = "$(realpath /home/$USER/Max_MA)" || (echo "The roo
 source /opt/ros/galactic/setup.bash
 
 # Clone Autoware and tools
-
+echo "Cloning repositories"
 # Workers set to 1 because of private repositories requiring manual authentication, one by one. Parallel workers interfere in that case.
 vcs import --workers 1 --repos < dependencies.repos
 # Check if expected files/folders exist, print error and exit otherwise.
@@ -25,17 +25,23 @@ stat autoware > /dev/null
 stat scenario_runner > /dev/null
 stat ros2multitopic > /dev/null
 
-# Download and unpack customized AWSIM
+# Download and unpack customized AWSIM (x86 only)
 
-awsim_zip_name="AWSIM_${awsim_ver}.zip"
-wget "https://github.com/mojomex/AWSIM/releases/download/v1.0.1_custom/${awsim_zip_name}"
-mkdir AWSIM
-unzip -d AWSIM "${awsim_zip_name}"
-rm "${awsim_zip_name}"
-stat AWSIM/AWSIM.headless.x86_64 > /dev/null
+if [ "$(uname -i)" = "x86_64" ]
+then
+    echo "Downloading and unpacking AWSIM"
+    awsim_zip_name="AWSIM_${awsim_ver}.zip"
+    wget "https://github.com/mojomex/AWSIM/releases/download/v1.0.1_custom/${awsim_zip_name}"
+    mkdir AWSIM
+    unzip -d AWSIM "${awsim_zip_name}"
+    rm "${awsim_zip_name}"
+    stat AWSIM/AWSIM.headless.x86_64 > /dev/null
+else
+    echo "Skipping AWSIM installation (architecture is not x86_64)."
+fi
 
 # Download and unpack map files
-
+echo "Downloading and unpacking map files"
 map_zip_name="nishishinjuku_autoware_map.zip"
 wget "https://github.com/tier4/AWSIM/releases/download/${map_ver}/${map_zip_name}"
 unzip ${map_zip_name}
@@ -44,7 +50,7 @@ mv nishishinjuku_autoware_map map
 rm ${map_zip_name}
 
 # Set up Autoware
-
+echo "Setting up Autoware"
 cd autoware
 ./setup-dev-env.sh
 mkdir src
@@ -57,7 +63,7 @@ stat install/setup.bash > /dev/null
 cd $rootdir
 
 # Set up ROS2 Multitopic
-
+echo "Setting up ROS2 Multitopic"
 cd ros2multitopic
 pip3 install -r requirements.txt
 colcon build --symlink-install
@@ -65,9 +71,13 @@ stat install/setup.bash > /dev/null
 cd $rootdir
 
 # Set up scenario runner
-
+echo "Setting up Autoware Scenatrio Runner"
 cd scenario_runner
 pip3 install -r requirements.txt
 vcs import --workers 1 --repos src < dependencies.repos
 colcon build --symlink-install
 cd $rootdir
+
+
+echo "================="
+echo "Setup successful."
