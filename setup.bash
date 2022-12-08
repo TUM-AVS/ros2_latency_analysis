@@ -18,7 +18,8 @@ source /opt/ros/galactic/setup.bash
 
 # Clone Autoware and tools
 
-vcs import < dependencies.repos
+# Workers set to 1 because of private repositories requiring manual authentication, one by one. Parallel workers interfere in that case.
+vcs import --workers 1 --repos < dependencies.repos
 # Check if expected files/folders exist, print error and exit otherwise.
 stat autoware > /dev/null
 stat scenario_runner > /dev/null
@@ -48,7 +49,7 @@ cd autoware
 ./setup-dev-env.sh
 mkdir src
 vcs import src < autoware.repos
-vcs import src < "$rootdir/tracing.repos"
+vcs import src --repos < "$rootdir/tracing.repos"
 rosdep install -y --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 colcon build --symlink-install --packages-up-to tracetools ros2trace tracetools_read tracetools_analysis
@@ -67,6 +68,6 @@ cd $rootdir
 
 cd scenario_runner
 pip3 install -r requirements.txt
-vcs import src < dependencies.repos
+vcs import --workers 1 --repos src < dependencies.repos
 colcon build --symlink-install
 cd $rootdir
