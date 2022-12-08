@@ -52,7 +52,7 @@ tasks:
   # Special task names like autoware or rosbag behave differently (they have to print console outputs before they are considered running)
   task_name:
     # Bash commands, will be executed in order
-    start_commands:
+    commands:
       - "cd .."
       - "source ./x.sh"
       - "run xyz"
