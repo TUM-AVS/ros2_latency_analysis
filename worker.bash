@@ -1,7 +1,9 @@
 #!/bin/bash
 
 cd "$HOME"/Max_MA/scenario_runner || exit 1
+# Either 'aw' or 'sim'
 role=$1
+# The path to a config (.yml) file for the scenario runner
 conf=$2
 export ROS_DOMAIN_ID=69
 source install/setup.bash
