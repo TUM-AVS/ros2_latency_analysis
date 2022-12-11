@@ -65,4 +65,4 @@ cleanup:
     - "pkill -f ros --signal SIGINT"
     - "timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros"
     - "echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
-runtime_s: 120
+runtime_s: 240

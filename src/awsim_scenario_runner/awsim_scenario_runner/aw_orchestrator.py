@@ -80,8 +80,10 @@ class AwOrchestrator(Node):
         self.goal_publisher = self.create_publisher(PoseStamped, '/planning/mission_planning/goal', 1)
         self.engage_client = self.create_client(Engage, '/api/external/set/engage')
         self.disengage_timer = self.create_timer(.1, self.disengage_check)
-        self.engaged_time = None
-        self.disengage_delay = Duration(seconds=60)  # seconds after engaging
+        self.planning_done_timestamp = None
+        self.engaged_timestamp = None
+        self.engage_delay = Duration(seconds=20)  # seconds after planned until engage
+        self.disengage_delay = Duration(seconds=90)  # seconds after engaging until disengage
         
         self.state_machine = OrchestratorStateMachine()
 
@@ -113,25 +115,31 @@ class AwOrchestrator(Node):
             self.goal_publisher.publish(msg)
             self.get_logger().info("[Orchestrator] Published goal message")
         elif state == OrchestratorState.ReadyToEngage:
-            req = Engage.Request()
-            req.engage =  True
-            self.engage_client.call(req)
-            self.get_logger().info("[Orchestrator] Engage service called (engage)")
-            self.engaged_time = self.get_clock().now()
+            self.planning_done_timestamp = self.get_clock().now()
         elif state == OrchestratorState.Done:
             pass
     
     def disengage_check(self):
-        if self.engaged_time is None:
+        if self.engaged_timestamp is not None:
+            now = self.get_clock().now()
+            if now >= self.engaged_timestamp + self.disengage_delay:
+                req = Engage.Request()
+                req.engage =  False
+                self.engage_client.call(req)
+                self.get_logger().info("[Orchestrator] Engage service called (disengage)")
+                self.engaged_timestamp = None
             return
 
-        now = self.get_clock().now()
-        if now >= self.engaged_time + self.disengage_delay:
-            req = Engage.Request()
-            req.engage =  False
-            self.engage_client.call(req)
-            self.get_logger().info("[Orchestrator] Engage service called (disengage)")
-            self.engaged_time = None
+        if self.planning_done_timestamp is not None:
+            now = self.get_clock().now()
+            if now >= self.planning_done_timestamp + self.engage_delay:
+                req = Engage.Request()
+                req.engage =  True
+                self.engage_client.call(req)
+                self.get_logger().info("[Orchestrator] Engage service called (engage)")
+                self.planning_done_timestamp = None
+                self.engaged_timestamp = self.get_clock().now()
+
 
 def main(args=None):
     rclpy.init(args=args)
