@@ -55,7 +55,7 @@ startup:
     - "pkill -f ros --signal SIGINT"
     - "timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros"
     - "echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
-    - "echo $([ "$(uname -i)" = x86_64 ] && echo "3000000" || echo "1500000") | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed"
+    - 'echo $([ "$(uname -i)" = x86_64 ] && echo "3000000" || echo "1500000") | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed'
 cleanup:
   commands:
     - "ros2 topic pub -1 /ma_awsim_scenario_runner/shutdown std_msgs/msg/Empty"
