@@ -1,17 +1,21 @@
 #!/bin/bash
 
-cd $HOME/Max_MA/scenario_runner
+cd "$HOME"/Max_MA/scenario_runner || exit 1
 role=$1
+conf=$2
 export ROS_DOMAIN_ID=69
 source install/setup.bash
 
+# Ger scenario name by removing path and file extension, leaving only the stem (e.g. "./config/aw_awsim.yml" --> "aw_awsim")
+scenario_name=$(basename "$conf" .yml)
+
 case $role in
     aw)
-    echo "Launching Autoware orchestrator"
+    echo "Launching Autoware orchestrator on scenario ${scenario_name}"
     ros2 run awsim_scenario_runner aw_orchestrator &
-    python3 scenario_runner.py -c config/aw_awsim.yml ROS_DOMAIN_ID:=69
+    python3 scenario_runner.py -c "$conf" ROS_DOMAIN_ID:=69
     rm artifacts.zip
-    zip -r1 artifacts.zip artifacts/aw_awsim
+    zip -r1 artifacts.zip artifacts/"${scenario_name}"
     ;;
     sim)
     echo "Launching Simulator orchestrator"
