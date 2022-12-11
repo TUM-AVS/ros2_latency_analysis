@@ -6,5 +6,5 @@ artifacts/
 log/
 sysinfo/
 src/external/
-worker.log
+*.log
 *.pyc
