@@ -8,8 +8,8 @@
 #################################################
 
 # The string after the :- is the default value if the environment variable before it is not set
-aw_hostname=${SC_AW_HOSTNAME:-edgar-sim-dev}
-aw_username=${SC_AW_USERNAME:-adlink}
+aw_hostname=${SC_AW_HOSTNAME}
+aw_username=${SC_AW_USERNAME}
 
 sim_hostname=${SC_SIM_HOSTNAME:-sim-SYS-7049GP-TRT}
 sim_username=${SC_SIM_USERNAME:-sim}
@@ -40,16 +40,16 @@ then
     ssh-keygen -f "$ssh_id"
 fi
 
-ssh-copy-id -i $ssh_id ${sim_username}@${sim_hostname}
-ssh-copy-id -i $ssh_id ${aw_username}@${aw_hostname}
+ssh-copy-id -i "$ssh_id" "${sim_username}"@"${sim_hostname}"
+ssh-copy-id -i "$ssh_id" "${aw_username}"@"${aw_hostname}"
 
 #################################################
 # Script Execution
 #################################################
 
-ssh -tt -i "$ssh_id" ${sim_username}@${sim_hostname} "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator ${sim_rootdir}/scenario_runner/worker.bash sim" > /dev/null &
+ssh -tt -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator ${sim_rootdir}/scenario_runner/worker.bash sim" > /dev/null &
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
-ssh -tt -i "$ssh_id" ${aw_username}@${aw_hostname} "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator ${aw_rootdir}/scenario_runner/worker.bash aw" > /dev/null &
+ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator ${aw_rootdir}/scenario_runner/worker.bash aw" > /dev/null &
 echo "[LAUNCHER] Launched aw worker on ${aw_username}@${aw_hostname}"
 
 if [ "$1" = "rviz" ]
@@ -67,6 +67,6 @@ echo "[LAUNCHER] Done."
 
 artifacts_filename=artifacts_$(date "+%Y%m%d_%H%M%S").zip
 echo "[LAUNCHER] Copying artifacts from aw worker to '$artifacts_filename'..."
-scp -i "$ssh_id" ${aw_username}@${aw_hostname}:${aw_rootdir}/scenario_runner/artifacts.zip "$artifacts_filename" || exit 1
+scp -i "$ssh_id" "${aw_username}"@"${aw_hostname}":"${aw_rootdir}"/scenario_runner/artifacts.zip "$artifacts_filename" || exit 1
 echo "[LAUNCHER] Done."
 exit 0
