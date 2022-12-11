@@ -38,12 +38,13 @@ class RunnerState(Enum):
 
 
 class TaskManager:
-    def __init__(self, cfg_name, tasks, startup_task: 'GenericTask', cleanup_task: 'GenericTask', start_deps, runtime_s):
+    def __init__(self, cfg_path, tasks, startup_task: 'GenericTask', cleanup_task: 'GenericTask', start_deps, runtime_s):
         self.tasks = tasks
         self.startup_task = startup_task
         self.cleanup_task = cleanup_task
-        self.cfg_name = cfg_name
-        self.logger = logging.getLogger(cfg_name)
+        self.cfg_path = cfg_path
+        self.cfg_name = Path(cfg_path).stem
+        self.logger = logging.getLogger(self.cfg_name)
         self.runtime_s = runtime_s
         self._state = RunnerState.SETUP
         self.t_started = None
@@ -124,10 +125,12 @@ class TaskManager:
         os.makedirs(run_dir)
         for task in self.tasks.values():
             task.copy_artifacts(run_dir)
+        shutil.copy(self.cfg_path, run_dir)
         self.logger.info("[RUNNER] DONE")
 
 
-def parse_config(cfg_name, cfg_dict, env_vars):
+def parse_config(config_path, cfg_dict, env_vars):
+
     tasks = {}
     start_deps = {}
 
@@ -157,7 +160,7 @@ def parse_config(cfg_name, cfg_dict, env_vars):
     if runtime_s is not None:
         runtime_s = float(runtime_s)
 
-    return TaskManager(cfg_name, tasks, startup_task, cleanup_task, start_deps, runtime_s)
+    return TaskManager(config_path, tasks, startup_task, cleanup_task, start_deps, runtime_s)
 
 
 class Task:
@@ -358,9 +361,7 @@ def run(config_path, env):
         with open(config_path) as f:
             runner_cfg = yaml.load(f)
 
-        config_name = Path(config_path).stem
-
-        mgr = parse_config(config_name, runner_cfg, env)
+        mgr = parse_config(config_path, runner_cfg, env)
         mgr.run()
         return 0
     except Exception as e:
