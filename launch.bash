@@ -49,9 +49,12 @@ ssh-copy-id -i "$ssh_id" "${aw_username}"@"${aw_hostname}"
 # Script Execution
 #################################################
 
-ssh -tt -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator ${sim_rootdir}/scenario_runner/worker.bash sim $cfg_path" > /dev/null &
+pids=()
+ssh -tt -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator timeout -k20 260 ${sim_rootdir}/scenario_runner/worker.bash sim $cfg_path" > /dev/null &
+pids+=($!)
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
-ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path" > /dev/null &
+ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator timeout -k20 260 ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path; pkill --signal SIGKILL -f 'ros|http.server|aw_orchestrator'" > /dev/null &
+pids+=($!)
 echo "[LAUNCHER] Launched aw worker on ${aw_username}@${aw_hostname}"
 
 if [ "$1" = "rviz" ]
@@ -63,7 +66,7 @@ then
 fi
 
 echo "[LAUNCHER] Waiting for workers to finish..."
-wait
+wait "${pids[@]}"
 
 echo "[LAUNCHER] Done."
 
