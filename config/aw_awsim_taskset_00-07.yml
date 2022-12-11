@@ -38,6 +38,8 @@ tasks:
     artifact_location: "~/.ros/tracing/max-ma-trace"
   messages:
     commands:
+      - "cd ~/Max_MA/autoware"
+      - "source install/setup.bash"
       - "cd ~/Max_MA/ros2multitopic"
       - "source install/setup.bash"
       - "rm -f messages.h5"
