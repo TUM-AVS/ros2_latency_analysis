@@ -50,10 +50,10 @@ ssh-copy-id -i "$ssh_id" "${aw_username}"@"${aw_hostname}"
 #################################################
 
 pids=()
-ssh -tt -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator timeout -k20 260 ${sim_rootdir}/scenario_runner/worker.bash sim $cfg_path" > /dev/null &
+ssh -tt -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "rm -f ${sim_rootdir}/scenario_runner/worker.log; screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator timeout -k20 260 ${sim_rootdir}/scenario_runner/worker.bash sim $cfg_path" > /dev/null &
 pids+=($!)
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
-ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator timeout -k20 260 ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path; pkill --signal SIGKILL -f 'ros|http.server|aw_orchestrator'" > /dev/null &
+ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "rm -f ${aw_rootdir}/scenario_runner/worker.log; screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator timeout -k20 260 ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path; pkill --signal SIGKILL -f 'ros|http.server|aw_orchestrator'" > /dev/null &
 pids+=($!)
 echo "[LAUNCHER] Launched aw worker on ${aw_username}@${aw_hostname}"
 
