@@ -17,8 +17,6 @@ case $role in
     rm -rf "artifacts"
     ros2 run awsim_scenario_runner aw_orchestrator &
     python3 scenario_runner.py -c "$conf" ROS_DOMAIN_ID:=69
-    rm artifacts.zip
-    zip -r1 artifacts.zip artifacts/"${scenario_name}"
     ;;
     sim)
     echo "Launching Simulator orchestrator"
