@@ -17,6 +17,8 @@ scenarios=(
         "edgar-sim-dev;adlink;./config/aw_awsim_taskset_00-03.yml"
 )
 
+reps=3
+
 for scenario in "${scenarios[@]}"
 do
         SC_AW_HOSTNAME=$(cut -d';' -f1 <<<"$scenario")
@@ -27,9 +29,9 @@ do
         export SC_AW_USERNAME
         export SC_CFG_PATH
 
-        for i in {1..10}
+	for ((i=1;i<=reps;i++))
         do
-	        echo "============== $i / 10 | $SC_AW_USERNAME@$SC_AW_HOSTNAME ($SC_CFG_PATH)" | tee -a launch.log
+	        echo "============== $i / $reps | $SC_AW_USERNAME@$SC_AW_HOSTNAME ($SC_CFG_PATH)" | tee -a launch.log
 	        ./launch.bash
         done
 done
