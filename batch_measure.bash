@@ -19,6 +19,13 @@ scenarios=(
 
 reps=3
 
+if [ "$1" = "reboot" ]
+then
+	#ssh -i ~/.ssh/id_max_ma edgar@edgar-hil-x86 "sudo reboot" || true
+	ssh -i ~/.ssh/id_max_ma adlink@edgar-sim-dev "sudo reboot" || true
+	sleep 10m
+fi
+
 for scenario in "${scenarios[@]}"
 do
         SC_AW_HOSTNAME=$(cut -d';' -f1 <<<"$scenario")
