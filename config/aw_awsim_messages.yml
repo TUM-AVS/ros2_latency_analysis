@@ -21,11 +21,12 @@ tasks:
     commands:
       - "cd ~/Max_MA/autoware"
       - "source install/setup.bash"
-      - "taskset -c 0-15 ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False 2>&1 | tee autoware.log"
+      - "ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False 2>&1 | tee autoware.log"
     artifact_location: "~/Max_MA/autoware/autoware.log"
     start_deps:
       - collect_sysinfo
       - tracing
+      - messages
   tracing:
     commands:
       - "cd ~/Max_MA/autoware"
@@ -35,6 +36,18 @@ tasks:
     start_deps:
       - collect_sysinfo
     artifact_location: "~/.ros/tracing/max-ma-trace"
+  messages:
+    commands:
+      - "cd ~/Max_MA/autoware"
+      - "source install/setup.bash"
+      - "cd ~/Max_MA/ros2multitopic"
+      - "source install/setup.bash"
+      - "rm -f messages.h5"
+      - "ros2 multitopic bw -o messages.h5 $(cat ../scenario_runner/topics.list | tr '\\n' ' ' | sed 's/ $//')"
+    artifact_location: "~/Max_MA/ros2multitopic/messages.h5"
+    start_deps:
+      - collect_sysinfo
+      - tracing
   runner_logs:
     commands: [ ]
     artifact_location: "~/Max_MA/scenario_runner/worker.log"
