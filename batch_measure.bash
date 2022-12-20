@@ -7,14 +7,13 @@ echo "### $0 ###" | tee -a launch.log
 
 # Format: SC_AW_HOSTNAME;SC_AW_USERNAME;SC_CFG_PATH
 scenarios=(
+        "edgar-hil-x86;edgar;./config/aw_awsim_sched_rr.yml"
+        "edgar-hil-x86;edgar;./config/aw_awsim_sched_fifo.yml"
         "edgar-hil-x86;edgar;./config/aw_awsim.yml"
-        "edgar-sim-dev;adlink;./config/aw_awsim.yml"
         "edgar-hil-x86;edgar;./config/aw_awsim_taskset_00-15.yml"
-        "edgar-sim-dev;adlink;./config/aw_awsim_taskset_00-15.yml"
         "edgar-hil-x86;edgar;./config/aw_awsim_taskset_00-07.yml"
-        "edgar-sim-dev;adlink;./config/aw_awsim_taskset_00-07.yml"
         "edgar-hil-x86;edgar;./config/aw_awsim_taskset_00-03.yml"
-        "edgar-sim-dev;adlink;./config/aw_awsim_taskset_00-03.yml"
+        "edgar-hil-x86;edgar;./config/aw_awsim_messages.yml"
 )
 
 reps=3
@@ -39,7 +38,7 @@ do
 	for ((i=1;i<=reps;i++))
         do
 	        echo "============== $i / $reps | $SC_AW_USERNAME@$SC_AW_HOSTNAME ($SC_CFG_PATH)" | tee -a launch.log
-	        ./launch.bash
+	        ./launch.bash | tee -a launch.log
         done
 done
 
