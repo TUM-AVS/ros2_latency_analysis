@@ -2,7 +2,7 @@ import os
 import subprocess
 import sys
 
-from pathlib2 import Path
+from pathlib import Path
 import rclpy
 from rclpy.node import Node
 from enum import Enum
