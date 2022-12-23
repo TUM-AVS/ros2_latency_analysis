@@ -29,7 +29,7 @@ tasks:
     commands:
       - "cd ~/Max_MA/autoware"
       - "source install/setup.bash"
-      - "{% block aw_launch_prefix %}{% endblock %} ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False 2>&1 | tee autoware.log"
+      - "{% block aw_launch_prefix %}{% endblock %} ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False &> autoware.log"
     artifact_location: "~/Max_MA/autoware/autoware.log"
     start_deps:
       - collect_sysinfo
@@ -51,7 +51,7 @@ tasks:
   # Record detailed, per-core CPU and RAM usage over time (once per second)
   resource_usage:
     commands:
-      - "sar -u -r 1 -P 0- | tee ~/Max_MA/scenario_runner/resource_usage.log"
+      - "sar -u -r 1 -P 0- &> ~/Max_MA/scenario_runner/resource_usage.log"
     artifact_location: "~/Max_MA/scenario_runner/resource_usage.log"
 
   # Dummy task (does nothing) for worker logs to be copied to artifacts after runner is done
