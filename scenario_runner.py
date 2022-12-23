@@ -12,6 +12,7 @@ import traceback
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 import ruamel.yaml
 
@@ -127,6 +128,17 @@ class TaskManager:
             task.copy_artifacts(run_dir)
         shutil.copy(self.cfg_path, run_dir)
         self.logger.info("[RUNNER] DONE")
+    
+    def __repr__(self) -> str:
+        repr = f"TaskManager:\n  Runtime: {self.runtime_s} s\n  Start Order:\n"
+        for i, t in enumerate(self.start_order):
+            repr += f"    ({i}) {t}\n"
+        repr += "\n"
+        for t in self.start_order:
+            repr += f"{self.tasks[t].__repr__()}\n\n"
+        repr += f"Startup {self.startup_task.__repr__()}\n\n"
+        repr += f"Cleanup {self.cleanup_task.__repr__()}"
+        return repr
 
 
 def parse_config(config_path, cfg_dict, env_vars):
@@ -296,6 +308,16 @@ class Task:
 
     def __str__(self):
         return f"Task(name={self.name})"
+    
+    def __repr__(self) -> str:
+        repr = f"Task:\n  Name: {self.name}\n  Commands:\n"
+        for i, c in enumerate(self.commands):
+            repr += f"    ({i}) {c}\n"
+        repr += f"  Environment:\n"
+        for k, v in self.env.items():
+            repr += f"    {k} := '{v}'\n"
+        repr += f"  Artifact Location:\n    {self.artifacts_loc}"
+        return repr
 
 
 class GenericTask(Task):
@@ -350,7 +372,18 @@ TASK_MAP = {
 }
 
 
-def run(config_path, env):
+def render_config(config_path: str):
+    config_directory, config_filename = os.path.split(config_path)
+    env = Environment(loader=FileSystemLoader(config_directory),
+        autoescape=select_autoescape())
+    
+    template = env.get_template(config_filename)
+    yaml_source = template.render({})
+    return yaml_source
+
+
+def run(config_path, env, do_dry_run):
+
     yaml = ruamel.yaml.YAML()
 
     for env_var, value in env.items():
@@ -358,11 +391,13 @@ def run(config_path, env):
         logger.debug(f"[RUNNER][ENV] {env_var}={value}")
 
     try:
-        with open(config_path) as f:
-            runner_cfg = yaml.load(f)
+        yaml_source = render_config(config_path)
+        runner_cfg = yaml.load(yaml_source)
 
         mgr = parse_config(config_path, runner_cfg, env)
-        mgr.run()
+        print(repr(mgr))
+        if not do_dry_run:
+            mgr.run()
         return 0
     except Exception as e:
         logger.exception(e)
@@ -373,6 +408,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run Autoware in a predefined scenario, with tracing.')
     parser.add_argument('--config', '-c', metavar="CONFIG_PATH", type=str, default="config/aw_replay.yml",
                         help='Configuration file (.yml). Default: ./config/aw_replay.yml')
+    parser.add_argument('--dry-run', '-d', action='store_true')
 
     parser.add_argument('env_vars', type=str, nargs='*', default=[],
                         help='Environment variables to pass to runners. In the format ENV_VAR_1:="value 1" ENV_VAR_2:=...')
@@ -397,5 +433,5 @@ if __name__ == "__main__":
     if "ROS_DOMAIN_ID" not in env:
         raise ValueError("ROS domain ID is not set explicitly. "
                          "The domain ID MUST be set explicitly to not screw up other people's runs.")
-    ret_status = run(args.config, env)
+    ret_status = run(args.config, env, args.dry_run)
     sys.exit(ret_status)
