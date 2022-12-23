@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import datetime
+import os
 import subprocess
 import sys
 import logging
@@ -42,7 +43,9 @@ def run(runs: Dict[str, List[str]], reps_per_run=3):
                 progress_str = f"({total_complete+1} / {total_runs})"
                 LOGGER.info(f"{progress_str} Running {cfg} on {user}@{hostname} ({i+1} / {reps_per_run})...")
                 t_start = datetime.datetime.now()
-                completed_process = subprocess.run(["./launch.bash"], env={"SC_AW_HOSTNAME": hostname, "SC_AW_USERNAME": user, "SC_CFG_PATH": cfg})
+                env = os.environ.copy()
+                env.update({"SC_AW_HOSTNAME": hostname, "SC_AW_USERNAME": user, "SC_CFG_PATH": cfg})
+                completed_process = subprocess.run(["./launch.bash"], env=env, shell=True)
                 runtime = datetime.datetime.now() - t_start
                 if completed_process.returncode == 0:
                     LOGGER.info(f"{progress_str} Done (finished cleanly), took {runtime.total_seconds():.2f} s.")
