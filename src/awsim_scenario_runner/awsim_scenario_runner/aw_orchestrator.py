@@ -50,7 +50,7 @@ class OrchestratorStateMachine:
                 else:
                     _raise()
         elif self._state == OrchestratorState.Driving:
-                if symbol == AutowareState.ARRIVED_GOAL or symbol ==  AutowareState.WAITING_FOR_ROUTE:
+                if symbol == AutowareState.ARRIVED_GOAL or symbol ==  AutowareState.WAITING_FOR_ROUTE or symbol == AutowareState.WAITING_FOR_ENGAGE:
                     self._state = OrchestratorState.Done
                 elif symbol == AutowareState.DRIVING:
                     pass
