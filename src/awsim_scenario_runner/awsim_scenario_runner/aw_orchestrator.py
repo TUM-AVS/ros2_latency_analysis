@@ -120,7 +120,7 @@ class AwOrchestrator(Node):
                 self.get_logger().info("[Orchestrator] Calling engage service (disengage)")
                 req = Engage.Request()
                 req.engage =  False
-                self.engage_client.call(req)
+                self.engage_client.call_async(req)
                 self.get_logger().info("[Orchestrator] Engage service called (disengage)")
                 self.engaged_timestamp = None
             return
@@ -131,7 +131,7 @@ class AwOrchestrator(Node):
                 self.get_logger().info("[Orchestrator] Calling engage service (engage)")
                 req = Engage.Request()
                 req.engage =  True
-                self.engage_client.call(req)
+                self.engage_client.call_async(req)
                 self.get_logger().info("[Orchestrator] Engage service called (engage)")
                 self.planning_done_timestamp = None
                 self.engaged_timestamp = self.get_clock().now()
