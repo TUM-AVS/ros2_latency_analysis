@@ -65,6 +65,7 @@ class TaskManager:
                 self.startup_task.poll()
                 if self.startup_task.state().value >= TaskState.STOPPED.value:
                     self._state = RunnerState.STARTUP
+                time.sleep(.05)
         else:
             self._state = RunnerState.STARTUP
 
@@ -80,6 +81,7 @@ class TaskManager:
                     currently_starting.start()
                 else:
                     self._state = RunnerState.RUNNING
+            time.sleep(.05)
 
         self.t_started = datetime.now()
         if self.runtime_s is None:
@@ -97,13 +99,17 @@ class TaskManager:
                 seconds=self.runtime_s)
             if all_terminated or runtime_over:
                 self._state = RunnerState.TEARDOWN
+            time.sleep(.05)
 
         self.logger.info(f"[RUNNER] TEARDOWN: {'all tasks finished' if all_terminated else 'runtime is over'}")
         if self.cleanup_task:
             self.logger.info("[RUNNER] Commencing CLEANUP")
             self.cleanup_task.start()
             while self.cleanup_task.state().value < TaskState.STOPPED.value:
+                for task in self.tasks.values():
+                    task.poll()
                 self.cleanup_task.poll()
+                time.sleep(.05)
             self.logger.info("[RUNNER] Finished CLEANUP")
 
         while self._state == RunnerState.TEARDOWN:
@@ -114,7 +120,7 @@ class TaskManager:
                 except Exception:
                     traceback.print_exc()
 
-            time.sleep(.1)
+            time.sleep(.05)
             if all(t.state().value >= TaskState.STOPPED.value for t in self.tasks.values()):
                 self._state = RunnerState.STOPPED
 
