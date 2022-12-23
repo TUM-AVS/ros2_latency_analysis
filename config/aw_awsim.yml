@@ -1,5 +1,9 @@
 # Max's Master Thesis, please don't modify!
+
+# The list of tasks to execute by the runner
 tasks:
+
+  # Collects system and diagnostics info of the system (hardware, drivers, Git statuses etc.)
   collect_sysinfo:
     commands:
       - "out_dir=~/Max_MA/scenario_runner/sysinfo"
@@ -16,16 +20,24 @@ tasks:
       - "cd ~/edgar/autoware"
       - "vcs custom -n --git --args log --oneline -n 1 > $out_dir/head_commit.log"
       - "vcs status -n > $out_dir/vcs_status.log"
+{% block extra_sysinfo %}
+{% endblock %}
     artifact_location: "~/Max_MA/scenario_runner/sysinfo"
+
+  # Starts autoware in the AWSIM configuration
   autoware:
     commands:
       - "cd ~/Max_MA/autoware"
       - "source install/setup.bash"
-      - "ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False 2>&1 | tee autoware.log"
+      - "{% block aw_launch_prefix %}{% endblock %} ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False 2>&1 | tee autoware.log"
     artifact_location: "~/Max_MA/autoware/autoware.log"
     start_deps:
       - collect_sysinfo
       - tracing
+{% block autoware_extra_deps %}
+{% endblock %}
+
+  # Starts ROS tracing
   tracing:
     commands:
       - "cd ~/Max_MA/autoware"
@@ -35,21 +47,44 @@ tasks:
     start_deps:
       - collect_sysinfo
     artifact_location: "~/.ros/tracing/max-ma-trace"
+
+  # Record detailed, per-core CPU and RAM usage over time (once per second)
+  resource_usage:
+    commands:
+      - "sar -u -r 1 -P 0- | tee ~/Max_MA/scenario_runner/resource_usage.log"
+    artifact_location: "~/Max_MA/scenario_runner/resource_usage.log"
+
+  # Dummy task (does nothing) for worker logs to be copied to artifacts after runner is done
   runner_logs:
     commands: [ ]
     artifact_location: "~/Max_MA/scenario_runner/worker.log"
+{% block extra_tasks %}
+{% endblock %}
+# Runs before the main tasks to prepare the environment
 startup:
   commands:
-    - "pstree -p -s -T -c -a $$"
+    # Make sure that any failed/ongoing previous runs are killed.
+    # This is normally ensured by the user before starting runs, or by the launch.bash script.
     - "pkill -f ros --signal SIGINT"
-    - "timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros"
+    # After 20 seconds, forcefully terminate (SIGTERM) all ROS processes that have not exited.
+    - "timeout 20 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros"
+    # Fix frequency scaling to 1.5 GHz on ARM or 3.0 GHz on x86
     - "echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
     - 'echo $([ "$(uname -i)" = x86_64 ] && echo "3000000" || echo "1500000") | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed'
+{% block extra_startup %}
+{% endblock %}
+# Runs after the main tasks are finished to restore the environment
 cleanup:
   commands:
+    # Send shutdown signal to the AW/SIM Orchestrator nodes of the scenario runner workers
     - "ros2 topic pub -1 /ma_awsim_scenario_runner/shutdown std_msgs/msg/Empty"
-    - "pstree -p -s -T -c -a $$"
+    # Shutdown ROS processes gracefully
     - "pkill -f ros --signal SIGINT"
-    - "timeout 5 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros"
+    # After 20 seconds, forcefully terminate (SIGTERM) all ROS processes that have not exited.
+    - "timeout 20 tail --pid=$(pgrep -d ' --pid=' -f ros) -f /dev/null || pkill -f ros"
+    # Reset frequency scaling to dynamic
     - "echo ondemand | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
-runtime_s: 210
+{% block extra_cleanup %}
+{% endblock %}
+# Time from the first main task (after startup) being started and all tasks (before cleanup) being stopped
+runtime_s: {% block runtime %}120{% endblock %}

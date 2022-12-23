@@ -1,0 +1,56 @@
+#!/usr/bin/python3
+
+import datetime
+import subprocess
+import sys
+import logging
+from typing import Dict, List
+
+logging.basicConfig()
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
+
+RUNS = {
+    "edgar@edgar-hil-x86": [
+        "./config/aw_awsim_taskset_00-14.yml",
+        "./config/aw_awsim_sched_fifo.yml",
+        "./config/aw_awsim_sched_rr_5ms.yml",
+        "./config/aw_awsim_sched_rr_10ms.yml",
+        "./config/aw_awsim_sched_rr_20ms.yml",
+        "./config/aw_awsim_sched_rr_40ms.yml",
+        "./config/aw_awsim_sched_rr_80ms.yml",
+        "./config/aw_awsim_sched_rr_100ms.yml"
+    ]
+}
+
+def run(runs: Dict[str, List[str]], reps_per_run=3):
+    total_runs = reps_per_run * sum(map(len, RUNS.values()))
+
+    t_start_total = datetime.datetime.now()
+    LOGGER.info(f"Started at {t_start_total}")
+    LOGGER.info(f"Performing a total of {total_runs} runs on {len(RUNS)} hosts.")
+    total_complete = 0
+    for host, configs in runs.items():
+        try:
+            user, hostname = host.split("@")
+        except Exception:
+            LOGGER.error(f"'{host}' is not in the form 'username@hostname'")
+            sys.exit(1)
+        
+        for cfg in configs:
+            for i in range(reps_per_run):
+                progress_str = f"({total_complete+1} / {total_runs})"
+                LOGGER.info(f"{progress_str} Running {cfg} on {user}@{hostname} ({i+1} / {reps_per_run})...")
+                t_start = datetime.datetime.now()
+                completed_process = subprocess.run(["./launch.bash"], env={"SC_AW_HOSTNAME": hostname, "SC_AW_USERNAME": user, "SC_CFG_PATH": cfg})
+                runtime = datetime.datetime.now() - t_start
+                if completed_process.returncode == 0:
+                    LOGGER.info(f"{progress_str} Done (finished cleanly), took {runtime.total_seconds():.2f} s.")
+                else:
+                    LOGGER.warning(f"{progress_str} Failed (returned code {completed_process.returncode}), took {runtime.total_seconds():.2f} s.")
+                total_complete += 1
+    t_end_total = datetime.datetime.now()
+    LOGGER.info(f"Finished at {t_end_total}, ran for {t_end_total - t_start_total}.")
+
+if __name__ == "__main__":
+    run(RUNS)

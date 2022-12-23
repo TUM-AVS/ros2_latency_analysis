@@ -1,0 +1,2 @@
+{% extends "aw_awsim_sched_rr.yml" %}
+{% block rr_timeslice_ms %}20{% endblock %}
