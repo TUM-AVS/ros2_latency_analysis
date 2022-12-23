@@ -31,7 +31,6 @@ class OrchestratorStateMachine:
         if self._state == OrchestratorState.Initializing:
                 if symbol == AutowareState.WAITING_FOR_ROUTE:
                     self._state = OrchestratorState.ReadyToPlan
-                    return True
                 elif symbol == AutowareState.INITIALIZING:
                     pass
                 else:
@@ -39,7 +38,6 @@ class OrchestratorStateMachine:
         elif self._state == OrchestratorState.ReadyToPlan:
                 if symbol == AutowareState.WAITING_FOR_ENGAGE:
                     self._state = OrchestratorState.ReadyToEngage
-                    return True
                 elif symbol == AutowareState.PLANNING or symbol ==  AutowareState.WAITING_FOR_ROUTE:
                     pass
                 else:
@@ -47,7 +45,6 @@ class OrchestratorStateMachine:
         elif self._state == OrchestratorState.ReadyToEngage:
                 if symbol == AutowareState.DRIVING:
                     self._state = OrchestratorState.Driving
-                    return True
                 elif symbol == AutowareState.WAITING_FOR_ENGAGE:
                     pass
                 else:
@@ -55,15 +52,12 @@ class OrchestratorStateMachine:
         elif self._state == OrchestratorState.Driving:
                 if symbol == AutowareState.ARRIVED_GOAL or symbol ==  AutowareState.WAITING_FOR_ROUTE:
                     self._state = OrchestratorState.Done
-                    return True
                 elif symbol == AutowareState.DRIVING:
                     pass
                 else:
                     _raise()
         else:
             pass
-        
-        return False
 
 
 class AwOrchestrator(Node):
@@ -82,16 +76,16 @@ class AwOrchestrator(Node):
         self.disengage_timer = self.create_timer(.1, self.disengage_check)
         self.planning_done_timestamp = None
         self.engaged_timestamp = None
-        self.engage_delay = Duration(seconds=20)  # seconds after planned until engage
-        self.disengage_delay = Duration(seconds=90)  # seconds after engaging until disengage
+        self.engage_delay = Duration(seconds=5)  # seconds after planned until engage
+        self.disengage_delay = Duration(seconds=85)  # seconds after engaging until disengage
         
         self.state_machine = OrchestratorStateMachine()
 
     def aw_state_callback(self, msg):
         old_state = self.state_machine._state
-        has_state_changed = self.state_machine.update(msg.state)
+        self.state_machine.update(msg.state)
 
-        if has_state_changed:
+        if old_state.value != self.state_machine._state.value:
             self.get_logger().info(f'[Orchestrator] State changed: {old_state.name} -> {self.state_machine._state.name} through AW state {msg.state}')
             self.state_change_callback(self.state_machine._state)
     
@@ -123,6 +117,7 @@ class AwOrchestrator(Node):
         if self.engaged_timestamp is not None:
             now = self.get_clock().now()
             if now >= self.engaged_timestamp + self.disengage_delay:
+                self.get_logger().info("[Orchestrator] Calling engage service (disengage)")
                 req = Engage.Request()
                 req.engage =  False
                 self.engage_client.call(req)
@@ -133,6 +128,7 @@ class AwOrchestrator(Node):
         if self.planning_done_timestamp is not None:
             now = self.get_clock().now()
             if now >= self.planning_done_timestamp + self.engage_delay:
+                self.get_logger().info("[Orchestrator] Calling engage service (engage)")
                 req = Engage.Request()
                 req.engage =  True
                 self.engage_client.call(req)
