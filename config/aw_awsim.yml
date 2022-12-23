@@ -63,6 +63,7 @@ tasks:
 # Runs before the main tasks to prepare the environment
 startup:
   commands:
+    - "rm -f ~/Max_MA/scenario_runner/ready_to_engage"
     # Make sure that any failed/ongoing previous runs are killed.
     # This is normally ensured by the user before starting runs, or by the launch.bash script.
     - "pkill -f 'ros|sar' --signal SIGINT"
@@ -76,6 +77,7 @@ startup:
 # Runs after the main tasks are finished to restore the environment
 cleanup:
   commands:
+    - "rm -f ~/Max_MA/scenario_runner/ready_to_engage"
     # Send shutdown signal to the AW/SIM Orchestrator nodes of the scenario runner workers
     - "ros2 topic pub -1 /ma_awsim_scenario_runner/shutdown std_msgs/msg/Empty"
     # Shutdown ROS processes gracefully

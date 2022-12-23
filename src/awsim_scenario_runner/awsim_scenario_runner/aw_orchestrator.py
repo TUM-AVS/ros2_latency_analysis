@@ -1,6 +1,8 @@
 import os
 import subprocess
 import sys
+
+from pathlib2 import Path
 import rclpy
 from rclpy.node import Node
 from enum import Enum
@@ -110,6 +112,7 @@ class AwOrchestrator(Node):
             self.get_logger().info("[Orchestrator] Published goal message")
         elif state == OrchestratorState.ReadyToEngage:
             self.planning_done_timestamp = self.get_clock().now()
+            Path("./ready_to_engage").touch()
         elif state == OrchestratorState.Done:
             pass
     
