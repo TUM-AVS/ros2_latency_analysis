@@ -33,17 +33,26 @@ def e2e_breakdown_type_hist(items: List[E2EBreakdownItem]):
     return fig
 
 
-def e2e_breakdown_inst_stack(*paths: List[E2EBreakdownItem]):
+def e2e_breakdown_stack(*paths: List[E2EBreakdownItem]):
     fig: Figure
     ax: Axes
-    fig, ax = plt.subplots(num="E2E instance breakdown stackplot")
+    fig, ax = plt.subplots(num="E2E type breakdown stackplot")
     fig.suptitle("Detailed E2E Latency Path Breakdown")
 
-    bottom = 0
-    for i in range(len(paths[0])):
-        e2e_items = [path[i] for path in paths]
-        durations = np.array([item.duration for item in e2e_items])
-        ax.bar(range(len(paths)), durations, bottom=bottom)
-        bottom = durations + bottom
+    if not paths:
+        return fig
 
+    plot_types = ("dds", "idle", "cpu")
+
+    type_indices = {type: [i for i, item in enumerate(paths[0]) if item.type == type] for type in plot_types}
+    type_durations = {}
+
+    for type in plot_types:
+        durations = [sum([item.duration for i, item in enumerate(path) if i in type_indices[type]]) for path in paths]
+        durations = np.array(durations)
+        type_durations[type] = durations
+
+    labels, duration_arrays = zip(*sorted(list(type_durations.items()), key=lambda pair: pair[1].var(), reverse=False))
+    ax.stackplot(range(len(paths)), *duration_arrays, labels=labels)
+    ax.legend()
     return fig
