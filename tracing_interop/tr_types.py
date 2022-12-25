@@ -14,22 +14,36 @@ Timestamp = namedtuple("Timestamp", ["timestamp"])
 
 class Index(Generic[IdxItemType]):
     def __init__(self, items: Iterable[IdxItemType], **idx_fields):
-        sort_key = lambda item: item.timestamp
+        self.__idx_fields = idx_fields.copy()
+        self.__items = None
+        self.__indices = None
 
-        self.__items = list(items)
+        self.rebuild(items)
+
+    def rebuild(self, items: Optional[Iterable[IdxItemType]] = None):
+        def sort_key(item):
+            return item.timestamp
+
+        if items is not None:
+            self.__items = list(items)
         self.__items.sort(key=sort_key)
         self.__indices = {}
 
-        for idx_name, is_multi in idx_fields.items():
+        for idx_name, is_multi in self.__idx_fields.items():
             index = {}
             self.__indices[idx_name] = index
-            if is_multi:
+            if is_multi in (True, 'n-to-m'):  # Accept either True (1-n) or 'n-to-m' (n-m) as value
                 for item in self.__items:
-                    key = getattr(item, idx_name)
-                    if key not in index:
-                        index[key] = []
-                    index[key].append(item)  # Also sorted since items are processed in order and only filtered here
-            else:  # Unique index
+                    if is_multi == 'n-to-m':
+                        keys = getattr(item, idx_name)
+                    else:
+                        keys = [getattr(item, idx_name)]  # Only one key (1-n
+
+                    for key in keys:
+                        if key not in index:
+                            index[key] = []
+                        index[key].append(item)  # Also sorted since items are processed in order and only filtered here
+            elif not is_multi:  # Unique index
                 duplicate_indices = defaultdict(lambda: 0)
 
                 for item in self.__items:
@@ -39,9 +53,15 @@ class Index(Generic[IdxItemType]):
                     index[key] = item
 
                 if duplicate_indices:
-                    print(f"[ENTKÄFERN] Duplicate Indices in {idx_name}:")
-                # for key, count in duplicate_indices.items():
-                #     print(f"--{key:<20d}'s last candidate: {repr(index[key])}")
+                    print(f"[DEBUG] Duplicate Indices in {idx_name}")
+            else:
+                raise ValueError(f"is_multi has to equal one of the following: (False, True, 'n-to-m') but is {is_multi}")
+
+    def append(self, items: Iterable[IdxItemType]):
+        self.rebuild(list(self.__items) + list(items))
+
+    def clear(self):
+        self.rebuild([])
 
     def __iter__(self):
         return iter(self.__items)
