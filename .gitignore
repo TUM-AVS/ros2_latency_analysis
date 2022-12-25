@@ -1,5 +1,10 @@
 fig*/
 .ipynb_checkpoints/
 __pycache__/
+out/
+cache/
 *.html
 *.pkl
+*.log
+*.svg
+*.gv
