@@ -2,7 +2,7 @@ import re
 from bisect import bisect_right
 from collections import defaultdict
 from functools import cache
-from typing import List
+from typing import List, Optional
 
 from tqdm import tqdm
 
@@ -30,7 +30,7 @@ def _repr(inst: TrCallbackInstance | TrPublishInstance):
 
 
 def get_dep_tree(inst: TrPublishInstance | TrCallbackInstance, lat_graph: LatencyGraph, tr: TrContext,
-                 excluded_path_patterns, time_limit_s):
+                 excluded_path_patterns, time_limit_s, exact_path: Optional[List[str]] = None):
     """
     Finds all (desired) dependencies of a publish/callback instance and returns a dependency tree.
 
@@ -43,10 +43,17 @@ def get_dep_tree(inst: TrPublishInstance | TrCallbackInstance, lat_graph: Latenc
 
     start_time = inst.timestamp
 
-    def __get_dep_tree(inst, is_dep_cb, visited=None):
+    def __get_dep_tree(inst, is_dep_cb, visited=None, level=0):
 
         # If inst owner has been visited already, skip (loop prevention)
         if visited is not None and owner(inst) in visited:
+            return None
+
+        # If an exact path is given, the owner of `inst` at `level` has to be identical to the corresponding item
+        # in `exact_path`. The level is non-positive (start at 0, descend one per recursion).
+        # `exact_path` is therefore traversed from back to front.
+        # If `level` is deeper than `exact_path` is long, the tree is also not of interest and thus discarded.
+        if exact_path is not None and ((level - 1 < -len(exact_path)) or exact_path[level - 1] != owner(inst)):
             return None
 
         # If we want to retrieve the tree, look in the cache first
@@ -81,7 +88,7 @@ def get_dep_tree(inst: TrPublishInstance | TrCallbackInstance, lat_graph: Latenc
         # print("Rec level", lvl)
         deps = list(filter(None, deps))
         # Copy visited set for each child because we don't want separate paths to interfere with each other
-        deps = [__get_dep_tree(dep, children_are_dep_cbs, {*visited, owner(inst)}) for dep in deps]
+        deps = [__get_dep_tree(dep, children_are_dep_cbs, {*visited, owner(inst)}, level=level-1) for dep in deps]
         deps = list(filter(None, deps))
 
         # Create tree instance, cache and return it
@@ -92,7 +99,7 @@ def get_dep_tree(inst: TrPublishInstance | TrCallbackInstance, lat_graph: Latenc
     return __get_dep_tree(inst, False)
 
 
-def build_dep_trees(end_topics, lat_graph, tr, excluded_path_patterns, time_limit_s):
+def build_dep_trees(end_topics, lat_graph, tr, excluded_path_patterns, time_limit_s, exact_path=None):
     """
     Builds the dependency trees for all messages published in any of `end_topics` and returns them as a list.
     """
@@ -106,7 +113,7 @@ def build_dep_trees(end_topics, lat_graph, tr, excluded_path_patterns, time_limi
             msgs = list(pub.instances)
             for msg in tqdm(msgs, mininterval=5.0, desc="Processing output messages"):
                 msg: TrPublishInstance
-                tree = get_dep_tree(msg, lat_graph, tr, excluded_path_patterns, time_limit_s)
+                tree = get_dep_tree(msg, lat_graph, tr, excluded_path_patterns, time_limit_s, exact_path=exact_path)
                 all_trees.append(tree)
     return all_trees
 
@@ -121,9 +128,9 @@ def inst_get_dep_msg(inst: TrCallbackInstance, tr: TrContext):
         return None
 
     sub_obj: TrSubscriptionObject = inst.callback_obj.owner
-    if sub_obj and sub_obj.subscription and sub_obj.subscription.topic:
+    if sub_obj and sub_obj.subscription and sub_obj.subscription.topics:
         # print(f"Subscription has no topic")
-        pubs = sub_obj.subscription.topic.publishers
+        pubs = [p for t in sub_obj.subscription.topics for p in t.publishers]
     else:
         pubs = []
 
@@ -144,7 +151,6 @@ def inst_get_dep_msg(inst: TrCallbackInstance, tr: TrContext):
         msg = msgs[0]
         return msg
 
-    # print(f"No messages found for topic {sub_obj.subscription.topic}")
     return None
 
 

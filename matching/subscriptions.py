@@ -260,7 +260,7 @@ def match(tr: TrContext, cl: ClContext):
             match tr_cb.owner:
                 case TrSubscriptionObject(subscription=tr_sub):
                     tr_sub: TrSubscription
-                    tr_topic = tr_sub.topic_name
+                    tr_topic = tr_sub.topic_names  # TODO: str->list type refactoring
                     if not tr_topic:
                         continue
                 case _:

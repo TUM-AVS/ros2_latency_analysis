@@ -113,7 +113,7 @@ def _get_cb_topic_deps(nodes_to_cbs: Dict[TrNode, Set[TrCallbackObject]]):
             p.update()
 
             if type(cb.owner) == TrSubscriptionObject:
-                dep_topics = [cb.owner.subscription.topic]
+                dep_topics = cb.owner.subscription.topics
             elif type(cb.owner) == TrTimer:
                 dep_topics = []
             elif cb.owner is None:

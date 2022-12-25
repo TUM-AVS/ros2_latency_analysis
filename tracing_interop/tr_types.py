@@ -105,8 +105,11 @@ class TrContext:
                            id=False)
         self.publishers = Index(df_to_type_list(handler.data.rcl_publishers, TrPublisher, _c=self),
                                 id=False, node_handle=True, topic_name=True)
-        self.subscriptions = Index(df_to_type_list(handler.data.rcl_subscriptions, TrSubscription, _c=self),
-                                   id=False, node_handle=True, topic_name=True)
+        self.subscriptions = Index(df_to_type_list(handler.data.rcl_subscriptions, TrSubscription,
+                                                   column_value_mappers={"topic_name": lambda n: [n]},
+                                                   column_to_field_mappings={"topic_name": "topic_names"},
+                                                   _c=self),
+                                   id=False, node_handle=True, topic_names='n-to-m')
         self.timers = Index(df_to_type_list(handler.data.timers, TrTimer, _c=self),
                             id=False)
         self.timer_node_links = Index(df_to_type_list(handler.data.timer_node_links, TrTimerNodeLink),
@@ -119,15 +122,15 @@ class TrContext:
         self.callback_symbols = Index(df_to_type_list(handler.data.callback_symbols, TrCallbackSymbol, _c=self),
                                       id=False)
         self.publish_instances = Index(df_to_type_list(handler.data.rcl_publish_instances, TrPublishInstance, _c=self,
-                                                       mappers={"timestamp": lambda t: t * 1e-9}),
+                                                       column_value_mappers={"timestamp": lambda t: t * 1e-9}),
                                        publisher_handle=True)
         self.callback_instances = Index(df_to_type_list(handler.data.callback_instances, TrCallbackInstance, _c=self,
-                                                        mappers={"timestamp": lambda t: t.timestamp(),
+                                                        column_value_mappers={"timestamp": lambda t: t.timestamp(),
                                                                  "duration": lambda d: d.total_seconds()}),
                                         callback_object=True)
 
         _unique_topic_names = {*(pub.topic_name for pub in self.publishers),
-                               *(sub.topic_name for sub in self.subscriptions)}
+                               *(n for sub in self.subscriptions for n in sub.topic_names)}
 
         self.topics = Index((TrTopic(name=name, _c=self) for name in _unique_topic_names),
                             name=False)
@@ -195,7 +198,7 @@ class TrPublisher:
 
     @property
     def subscriptions(self) -> List['TrSubscription']:
-        return self._c.subscriptions.by_topic_name.get(self.topic_name) or []
+        return self._c.subscriptions.by_topic_names.get(self.topic_name) or []
 
     @property
     def instances(self) -> List['TrPublishInstance']:
@@ -218,7 +221,7 @@ class TrSubscription:
     timestamp: int
     node_handle: int
     rmw_handle: int
-    topic_name: str
+    topic_names: List[str]
     depth: int
     _c: TrContext = field(repr=False)
 
@@ -228,15 +231,15 @@ class TrSubscription:
 
     @property
     def publishers(self) -> List['TrPublisher']:
-        return self._c.publishers.by_topic_name.get(self.topic_name) or []
+        return list(set(p for n in self.topic_names for p in self._c.publishers.by_topic_name.get(n)))
 
     @property
     def subscription_object(self) -> Optional['TrSubscriptionObject']:
         return self._c.subscription_objects.by_subscription_handle.get(self.id)
 
     @property
-    def topic(self) -> Optional['TrTopic']:
-        return self._c.topics.by_name.get(self.topic_name)
+    def topics(self) -> List['TrTopic']:
+        return list(set(self._c.topics.by_name.get(n) for n in self.topic_names))
 
     def __hash__(self):
         return hash(self.id)
@@ -417,7 +420,7 @@ class TrTopic:
 
     @property
     def subscriptions(self) -> List['TrSubscription']:
-        return self._c.subscriptions.by_topic_name.get(self.name) or []
+        return self._c.subscriptions.by_topic_names.get(self.name) or []
 
     def __hash__(self):
         return hash(self.name)
