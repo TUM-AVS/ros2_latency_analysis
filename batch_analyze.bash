@@ -11,7 +11,7 @@ do
   mkdir -p "$out"
   export ANA_NB_OUT_PATH="'$out'"
   export ANA_NB_TR_PATH="'$file/tracing/max-ma-trace/ust'"
-  papermill ./trace-analysis.ipynb "$out"/trace-analysis.ipynb | tee -a batch_analyze.log
+  papermill --log-output ./trace-analysis.ipynb "$out"/trace-analysis.ipynb 2>&1 | tee -a batch_analyze.log
 done
 
 echo "Done." | tee -a batch_analyze.log
