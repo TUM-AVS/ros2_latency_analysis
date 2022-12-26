@@ -1,0 +1,4 @@
+{% extends "aw_awsim_taskset_00-15.yml" %}
+{% block environment %}
+  RMW_IMPLEMENTATION: rmw_gurumdds_cpp
+{% endblock %}
