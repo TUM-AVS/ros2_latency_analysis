@@ -8,6 +8,15 @@ import logging
 from typing import Dict, List
 
 logging.basicConfig()
+
+rootLogger = logging.getLogger()
+
+fileHandler = logging.FileHandler("batch_measure.log")
+rootLogger.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler()
+rootLogger.addHandler(consoleHandler)
+
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
