@@ -21,15 +21,9 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
 RUNS = {
-    "adlink@edgar-sim-stable": [
-        "./config/aw_awsim.yml"
-    ],
-    "adlink@edgar-sim-dev": [
-        "./config/aw_awsim.yml"
-    ],
     "edgar@edgar-hil-x86": [
-        "./config/aw_awsim.yml",
-        "./config/aw_awsim_taskset_00-15.yml"
+        "./config/aw_awsim_taskset_00-07.yml"
+        "./config/aw_awsim_taskset_00-03.yml"
     ]
 }
 
