@@ -64,6 +64,13 @@ rm -f $map_zip_name
 
 # Set up Autoware
 echo "Setting up Autoware"
+# Add 32GiB of swap space to make Autoware compile without OutOfMemory errors
+swap_filename="temporary_autoware_compile_swapfile"
+sudo dd if=/dev/zero of=./"$swap_filename" bs=1024 count=$((32*1024*1024))
+sudo chmod 600 ./"$swap_filename"
+sudo mkswap ./"$swap_filename"
+sudo swapon ./"$swap_filename"
+
 cd autoware
 ./setup-dev-env.sh
 mkdir -p src
@@ -71,9 +78,11 @@ vcs import src < autoware.repos
 vcs import src --repos < "$rootdir/tracing.repos"
 rosdep install -y --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-colcon build --symlink-install --packages-up-to tracetools ros2trace tracetools_read tracetools_analysis
 stat install/setup.bash > /dev/null
 cd $rootdir
+
+sudo swapoff ./"$swap_filename"
+sudo rm ./"$swap_filename"
 
 # Set up ROS2 Multitopic
 echo "Setting up ROS2 Multitopic"
