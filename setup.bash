@@ -64,9 +64,9 @@ rm -f $map_zip_name
 
 # Set up Autoware
 echo "Setting up Autoware"
-# Add 32GiB of swap space to make Autoware compile without OutOfMemory errors
+# Add 16GiB of swap space to make Autoware compile without OutOfMemory errors
 swap_filename="temporary_autoware_compile_swapfile"
-sudo dd if=/dev/zero of=./"$swap_filename" bs=1024 count=$((32*1024*1024))
+sudo dd if=/dev/zero of=./"$swap_filename" bs=1G count=16
 sudo chmod 600 ./"$swap_filename"
 sudo mkswap ./"$swap_filename"
 sudo swapon ./"$swap_filename"
