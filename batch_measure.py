@@ -22,7 +22,7 @@ LOGGER.setLevel(logging.INFO)
 
 RUNS = {
     "edgar@edgar-hil-x86": [
-        "./config/aw_awsim_taskset_00-07.yml"
+        "./config/aw_awsim_taskset_00-07.yml",
         "./config/aw_awsim_taskset_00-03.yml"
     ]
 }
