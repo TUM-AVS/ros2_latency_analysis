@@ -1,4 +1,7 @@
 # Max's Master Thesis, please don't modify!
+environment:
+{% block environment %}
+{% endblock %}
 
 # The list of tasks to execute by the runner
 tasks:
