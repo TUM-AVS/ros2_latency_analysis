@@ -22,8 +22,11 @@ LOGGER.setLevel(logging.INFO)
 
 RUNS = {
     "edgar@edgar-hil-x86": [
-        "./config/aw_awsim_taskset_00-07.yml",
-        "./config/aw_awsim_taskset_00-03.yml"
+        "./config/aw_awsim_dds_connext.yml",
+        "./config/aw_awsim_dds_fastrtps_dyn_async.yml",
+        "./config/aw_awsim_dds_fastrtps_dyn_sync.yml",
+        "./config/aw_awsim_dds_fastrtps_static_async.yml",
+        "./config/aw_awsim_dds_fastrtps_static_sync.yml",
     ]
 }
 
