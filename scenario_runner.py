@@ -12,6 +12,7 @@ import traceback
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
+from typing import Dict
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 import ruamel.yaml
@@ -388,7 +389,7 @@ def render_config(config_path: str):
     return yaml_source
 
 
-def run(config_path, env, do_dry_run):
+def run(config_path: str, env: Dict[str, str], do_dry_run: bool):
 
     yaml = ruamel.yaml.YAML()
 
@@ -399,6 +400,9 @@ def run(config_path, env, do_dry_run):
     try:
         yaml_source = render_config(config_path)
         runner_cfg = yaml.load(yaml_source)
+
+        cfg_additional_env = runner_cfg.get("environment") or {}
+        env.update(cfg_additional_env)
 
         mgr = parse_config(config_path, runner_cfg, env)
         print(repr(mgr))
