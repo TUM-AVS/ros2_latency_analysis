@@ -42,8 +42,8 @@ then
     ssh-keygen -f "$ssh_id"
 fi
 
-ssh-copy-id -i "$ssh_id" "${sim_username}"@"${sim_hostname}"
-ssh-copy-id -i "$ssh_id" "${aw_username}"@"${aw_hostname}"
+ssh-copy-id -i "$ssh_id" "${sim_username}"@"${sim_hostname}" || true
+ssh-copy-id -i "$ssh_id" "${aw_username}"@"${aw_hostname}" || true
 
 #################################################
 # Script Execution
@@ -61,7 +61,7 @@ pids+=($!)
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
 (
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "rm -f ${aw_rootdir}/scenario_runner/worker.log"
-    ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator timeout -k20 280 ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path" > /dev/null
+    ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator timeout -k20 280 ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path"
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "pkill --signal SIGKILL -f 'ros|http.server|aw_orchestrator'"
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "lttng destroy max-ma-trace"
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "rm -f ${aw_rootdir}/scenario_runner/artifacts.zip"
