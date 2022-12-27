@@ -22,8 +22,7 @@ LOGGER.setLevel(logging.INFO)
 
 RUNS = {
     "edgar@edgar-hil-x86": [
-        "./config/aw_awsim_dds_connext.yml",
-        "./config/aw_awsim_dds_gurum.yml",
+        "./config/aw_awsim_taskset_00-03.yml",
     ]
 }
 
