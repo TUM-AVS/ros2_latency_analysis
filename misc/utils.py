@@ -12,6 +12,13 @@ from IPython.core.magic import (register_cell_magic, needs_local_scope)
 @register_cell_magic
 @needs_local_scope
 def skip_if_false(line, cell, local_ns=None):
+    """
+    Jupyter cell magic to skip a cell based on if a global variable evaluates to `False`.
+    Outputs a message that the cell has been skipped due to the given variable, or,
+    if not skipped, just runs the cell as per normal.
+    Usage: `%%skip_if_false MY_GLOBAL_VARIABLE` at the beginning of a cell.
+
+    """
     condition_var = eval(line, None, local_ns)
     if condition_var:
         get_ipython().run_cell(cell)
@@ -19,20 +26,42 @@ def skip_if_false(line, cell, local_ns=None):
     return f"Skipped (evaluated {line} to False)"
 
 
-def left_abbreviate(string, limit=120):
-    return string if len(string) <= limit else f"...{string[:limit - 3]}"
-
-
 def stable_hash(obj):
+    """
+    Stable hashing of objects like lists etc.
+    This is done by building the MD5 hash on the JSON representation of `obj`.
+    :param obj: The object to hash
+    :return: The hash as a string (10 characters)
+    """
     return hashlib.md5(json.dumps(obj).encode("utf-8")).hexdigest()[:10]
 
 
 def parse_as(target_type, string):
+    """
+    Parse `string` as type `target_type` on a best-effort basis.
+    First `literal_eval`s `string` and then calls `target_type(...)` on the result.
+    :param target_type: The desired type or function
+    :param string: The input string to be parsed
+    :return: The parsed object
+    """
     obj = ast.literal_eval(string)
     return target_type(obj)
 
 
 def cached(name, function, file_deps: List[str], disable_cache=False):
+    """
+    Caches the result of `function()` in `cache/name_XYZ.pkl`.
+    When `file_deps` change (one or more of the deps have been modified or the list changes),
+    the cache is invalidated and `function()` is evaluated again.
+    In both the cached and non-cached case, the result of `function()` is returned.
+
+    :param name: Cache name (only use filesystem-friendly characters)
+    :param function: The function of which the result shall be cached. Will be called without arguments.
+    :param file_deps: A list of file/folder names that can invalidate the cache. Folders are checked recursively.
+    :param disable_cache: Disable caching and always run `function()` if `True`. Otherwise enable cache.
+    :return: The result of `function()`, wither from the cache or from calling it.
+    """
+
     if disable_cache:
         print(f"[CACHE] Cache disabled for {name}.")
         return function()
