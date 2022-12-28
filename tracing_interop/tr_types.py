@@ -13,7 +13,18 @@ Timestamp = namedtuple("Timestamp", ["timestamp"])
 
 
 class Index(Generic[IdxItemType]):
+    """
+    This class implements a sized, iterable collection that allows building indices on its content.
+    These indices are accessed by `index.by_<index_field>(<lookup_value>)`.
+    1-1, 1-n and n-m indices are supported. The indices are hash-, not range-based.
+    `IdxItemType` is expected to have a `timestamp` field by which this collection sorts its items.
+    """
     def __init__(self, items: Iterable[IdxItemType], **idx_fields):
+        """
+        Construct an index.
+        :param items: An iterable of items to add to the index. Items have to have a `timestamp` field
+        :param idx_fields: Keyword args of the shape `<field_name> = <False|True|'n-to-m'>`. For each `<field_name>`, an index (1 to 1 for `False`, 1 to n for `True`, n to m for `'n-to-m'` is generated which can be accessed by `index.by_<field_name>(<lookup_value)` later.
+        """
         self.__idx_fields = idx_fields.copy()
         self.__items = None
         self.__indices = None
@@ -21,46 +32,70 @@ class Index(Generic[IdxItemType]):
         self.rebuild(items)
 
     def rebuild(self, items: Optional[Iterable[IdxItemType]] = None):
+        """
+        Clears all items and index structure contents, inserts the given `items` and recomputes all indices defined in the constructor.
+        :param items: The items to overwrite the index's contents. If `None`, the current items in the index remain
+        """
         def sort_key(item):
             return item.timestamp
 
+        # Keep self.__items if `None` is given as an argument, otherwise overwrite them.
         if items is not None:
             self.__items = list(items)
+        # Sort items and clear built indices
         self.__items.sort(key=sort_key)
         self.__indices = {}
 
+        # Build each index one-by-one that was requested in the constructor
         for idx_name, is_multi in self.__idx_fields.items():
             index = {}
             self.__indices[idx_name] = index
-            if is_multi in (True, 'n-to-m'):  # Accept either True (1-n) or 'n-to-m' (n-m) as value
+
+            if is_multi in (True, 'n-to-m'):  # Multi-index case (True = 1-n, 'n-to-m' = n-m)
                 for item in self.__items:
                     if is_multi == 'n-to-m':
-                        keys = getattr(item, idx_name)
+                        keys = getattr(item, idx_name)  # Returns a list of multiple keys (n-m)
                     else:
-                        keys = [getattr(item, idx_name)]  # Only one key (1-n
+                        keys = [getattr(item, idx_name)]  # Only one key (1-n)
 
+                    # Insert the item into the index for each of its keys
+                    # Multi-indices return a list for every key
                     for key in keys:
                         if key not in index:
                             index[key] = []
-                        index[key].append(item)  # Also sorted since items are processed in order and only filtered here
+                        # Also sorted since items are processed in order and only filtered here
+                        index[key].append(item)
             elif not is_multi:  # Unique index
                 duplicate_indices = defaultdict(lambda: 0)
 
+                # Insert item into the index at its key.
+                # Duplicates are accepted with a warning, although they should not exist.
+                # ROS 2 tracing ID duplication etc. causes them to occur though.
+                # This has not been observed to cause problems within the Autoware stack,
+                # only some info on ROS 2-internal stuff is lost.
                 for item in self.__items:
                     key = getattr(item, idx_name)
                     if key in index:
                         duplicate_indices[key] += 1
+                    # Unique indices return a single item for every key
                     index[key] = item
 
                 if duplicate_indices:
                     print(f"[DEBUG] Duplicate Indices in {idx_name}")
-            else:
+            else:  # No valid index type given
                 raise ValueError(f"is_multi has to equal one of the following: (False, True, 'n-to-m') but is {is_multi}")
 
     def append(self, items: Iterable[IdxItemType]):
+        """
+        Append `items` to an existing index and insert them into the index structures defined in the constructor.
+        :param items: The items to add to the collection
+        """
         self.rebuild(list(self.__items) + list(items))
 
     def clear(self):
+        """
+        Clear all items and index structure contents. Keep index definitions for the case that items are added after this call.
+        """
         self.rebuild([])
 
     def __iter__(self):
@@ -70,6 +105,12 @@ class Index(Generic[IdxItemType]):
         return len(self.__items)
 
     def __getattr__(self, item: str):
+        """
+        Returns the index pointed at by `item`.
+        The index is a function accepting one key, and returning either one item or a list of items depending on whether it is a unique or multi-index.
+        :param item: The index name, preceded by `'by_'`.
+        :return: The requested index function
+        """
         if not item.startswith("by_"):
             return AttributeError(
                     f"Not found in index: '{item}'. Index lookups must be of the shape 'by_<index_field>'.")
@@ -85,6 +126,11 @@ class Index(Generic[IdxItemType]):
 
 @dataclass
 class TrContext:
+    """
+    Contains all data that is needed to represent a tracing session.
+    The contained data is postprocessed, interlinked and indexed after being retrieved from a ros2_tracing `Ros2Handler`.
+    """
+
     nodes: Index['TrNode']
     publishers: Index['TrPublisher']
     subscriptions: Index['TrSubscription']
@@ -99,6 +145,10 @@ class TrContext:
     _uuid: UUID
 
     def __init__(self, handler: Ros2Handler):
+        """
+        Build the context from a `Ros2Handler` instance.
+        :param handler: The `Ros2Handler` instance to build the context from
+        """
         print("[TrContext] Processing ROS 2 objects from traces...")
 
         self.nodes = Index(df_to_type_list(handler.data.nodes, TrNode, _c=self),
@@ -149,6 +199,9 @@ class TrContext:
 
 @dataclass
 class TrNode:
+    """
+    The representation of a ROS 2 node in the tracing context.
+    """
     id: int
     timestamp: int
     tid: int
@@ -184,6 +237,9 @@ class TrNode:
 
 @dataclass
 class TrPublisher:
+    """
+    The representation of a ROS 2 publisher in the tracing context.
+    """
     id: int
     timestamp: int
     node_handle: int
@@ -217,6 +273,9 @@ class TrPublisher:
 
 @dataclass
 class TrSubscription:
+    """
+    The representation of a ROS 2 subscription in the tracing context.
+    """
     id: int
     timestamp: int
     node_handle: int
@@ -250,6 +309,9 @@ class TrSubscription:
 
 @dataclass
 class TrTimer:
+    """
+    The representation of a ROS 2 timer in the tracing context.
+    """
     id: int
     timestamp: int
     period: int
@@ -276,6 +338,9 @@ class TrTimer:
 
 @dataclass
 class TrTimerNodeLink:
+    """
+    The relation connecting timers to nodes in ROS 2 tracing data.
+    """
     id: int
     timestamp: int
     node_handle: int
@@ -289,6 +354,9 @@ class TrTimerNodeLink:
 
 @dataclass
 class TrSubscriptionObject:
+    """
+    The relation connecting subscriptions to callback objects to nodes in ROS 2 tracing data.
+    """
     id: int
     timestamp: int
     subscription_handle: int
@@ -311,6 +379,9 @@ class TrSubscriptionObject:
 
 @dataclass
 class TrCallbackObject:
+    """
+    The relation connecting callback instances to subscriptions/timers/etc. in ROS 2 tracing data.
+    """
     id: int  # (reference) = subscription_object.id | timer.id | ....
     timestamp: int
     callback_object: int
@@ -343,6 +414,9 @@ class TrCallbackObject:
 
 @dataclass
 class TrPublishInstance:
+    """
+    A publication of a message in ROS 2 tracing data.
+    """
     publisher_handle: int
     timestamp: float
     message: int
@@ -361,6 +435,9 @@ class TrPublishInstance:
 
 @dataclass
 class TrCallbackInstance:
+    """
+    An invocation of a callback (from a subscription or timer) in ROS 2 tracing data.
+    """
     callback_object: int
     timestamp: float
     duration: float
@@ -388,6 +465,11 @@ class TrCallbackInstance:
 
 @dataclass
 class TrCallbackSymbol:
+    """
+    The C++ symbol corresponding to a callback in ROS 2 tracing data.
+    This is typically a very convoluted name with lots of C++ wrappers and almost no symbols or identifiers preserved.
+    Use `repr(matching.subscriptions.sanitize(tr_callback_symbol.symbol))` to get a readable name.
+    """
     id: int  # callback_object
     timestamp: int
     symbol: str
@@ -410,6 +492,9 @@ class TrCallbackSymbol:
 
 @dataclass
 class TrTopic:
+    """
+    The representation of a ROS 2 topic, linking publishers and subscriptions.
+    """
     name: str
     _c: TrContext = field(repr=False)
     timestamp: int = 0
