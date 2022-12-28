@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--base-directory', '-d', default=os.path.expandvars('$HOME/Projects/ma-measurements'),
+    parser.add_argument('--base-directory', '-d', default=os.path.expandvars('$HOME/Projects/ma-thesis/measurements'),
                         help='The base directory containing all artifacts directories to be processed')
 
     parser.add_argument('--name-filter', '-f', default="artifacts_*", help="A shell-style wildcard expression to filter artifact folder names within the base directory. E.g. 'artifacts_2023*'.")
