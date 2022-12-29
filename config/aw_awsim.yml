@@ -32,6 +32,10 @@ tasks:
     commands:
       - "cd ~/Max_MA/autoware"
       - "source install/setup.bash"
+      # Daemon is in stopped state from startup task. It should start automatically
+      # but sometimes does not after changing DDS settings.
+      # This command does not hurt, even if it is already running (in that case, the command does nothing)
+      - "ros2 daemon start"
       - "{% block aw_launch_prefix %}{% endblock %} ros2 launch autoware_launch e2e_simulator.launch.xml vehicle_model:=sample_vehicle sensor_model:=awsim_sensor_kit map_path:=../map rviz:=False &> autoware.log"
     artifact_location: "~/Max_MA/autoware/autoware.log"
     start_deps:
