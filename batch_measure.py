@@ -92,4 +92,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    run(RUNS, args.reps_per_run, args.retry_count)
+    run(RUNS, args.reps_per_scenario, args.retry_count)
