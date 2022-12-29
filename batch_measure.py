@@ -23,10 +23,15 @@ LOGGER.setLevel(logging.INFO)
 
 RUNS = {
     "edgar@edgar-hil-x86": [
+        "./config/aw_awsim_taskset_00-15.yml",
+        "./config/aw_awsim_sched_rr_10ms.yml",
+        "./config/aw_awsim_taskset_00-07.yml",
         "./config/aw_awsim_taskset_00-05.yml",
-        "./config/aw_awsim_taskset_00-09.yml",
-        "./config/aw_awsim_taskset_00-11.yml",
-        "./config/aw_awsim_taskset_00-13.yml",
+        "./config/aw_awsim_taskset_00-14.yml",
+        "./config/aw_awsim_sched_rr_20ms.yml",
+        "./config/aw_awsim_sched_rr_20ms.yml",
+        "./config/aw_awsim_sched_fifo.yml",
+        "./config/aw_awsim_sched_fifo.yml",
     ]
 }
 
