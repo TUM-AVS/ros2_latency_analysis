@@ -167,22 +167,15 @@ def cl_deps_to_tr_deps(matches: Set[Tuple], tr: TrContext, cl: ClContext):
         ##################################################
 
         def owner_node(sym: TrCallbackSymbol):
-            cb_objs = sym.callback_objs
-            owners = [cb_obj.owner for cb_obj in cb_objs]
-            owner_nodes = set()
-            for owner in owners:
-                match owner:
-                    case TrSubscriptionObject() as sub:
-                        sub: TrSubscriptionObject
-                        owner_nodes.add(sub.subscription.node)
-                    case TrTimer() as tmr:
-                        tmr: TrTimer
-                        owner_nodes.update(tmr.nodes)
-
-            if len(owner_nodes) == 1:
-                return owner_nodes.pop()
-
-            return None
+            cb_obj = sym.callback_obj
+            owner = cb_obj.owner
+            match owner:
+                case TrSubscriptionObject() as sub:
+                    sub: TrSubscriptionObject
+                    return sub.subscription.node
+                case TrTimer() as tmr:
+                    tmr: TrTimer
+                    return tmr.node
 
         viable_matchings = {}
         for tr_cb in tr_cbs:
@@ -299,6 +292,16 @@ def match(tr: TrContext, cl: ClContext):
 
 
 def match_and_modify_children(node: ASTEntry, match_func):
+    """
+    If `node` is an `ASTNode`, try to apply `match_func` for every possible
+    tuple (chidren[:i], children[i:], node).
+    If `match_func` returns a non-None value, overwrite `node.children` with that result.
+    This function is not recursive but `match_func` can be.
+    Return `node` in all cases.
+    :param node: The node of which the children are applied `match_func` to
+    :param match_func: The match/modify function. Has to return either `None` or a list of `ASTEntry` and has to accept arguments `seq_head`, `seq_tail`, `node`.
+    :return: `node`
+    """
     if not isinstance(node, ASTNode):
         return node
 
@@ -312,12 +315,18 @@ def match_and_modify_children(node: ASTEntry, match_func):
     return node
 
 
-def sanitize(sig: str):
+def sanitize(sig: str) -> ASTNode | None:
+    """
+    Tokenizes and parses `sig` into pseudo-C++, then applies a set of rules on the resulting AST to filter unwanted boilerplate expressions.
+    Use `repr(sanitize(sig))` to get the sanitized `sig` as a string.
+    :param sig: A function signature, e.g. from tracing or Clang data.
+    :return: The sanitized AST.
+    """
     try:
         ast = build_ast(sig)
     except Exception as e:
         print(f"[ERROR] Could not build AST for {sig}, returning it as-is. {e}")
-        return str
+        return None
 
     def _remove_qualifiers(node: ASTEntry):
         match node:
@@ -442,6 +451,13 @@ def sanitize(sig: str):
 
 
 def traverse(node: ASTEntry, action) -> ASTEntry | None:
+    """
+    Traverse every node in `node`'s subtree, including itself, and apply `action` to it.
+    Return the result of `action(node)` recursively.
+    :param node: The `ASTEntry` to start traversal at
+    :param action: A transformation taking one `ASTEntry` argument and returning an `ASTEntry` or `None`.
+    :return: The transformed AST or `None`
+    """
     match node:
         case ASTNode():
             children = []
@@ -459,14 +475,25 @@ def traverse(node: ASTEntry, action) -> ASTEntry | None:
     return action(node)
 
 
-def build_ast(sig: str):
+def build_ast(sig: str) -> ASTNode:
+    """
+    Tokenize and parse `sig` into a pseudo-C++ abstract syntax tree (AST).
+    :param sig: The signature to parse
+    :return: The corresponding AST
+    """
     tokens = tokenize(sig)
 
     ast = ASTNode("ast", [], None)
+    # The state of brackets/braces/parens is stored as a stack. This stack has to be matched in reverse by tokens until
+    # all brackets/braces/parens are closed. Only contains opening ones, never closing ones.
     parens_stack = []
+
+    # The current node is the subtree which is worked on currently, start at the top-level `ast`
     current_node = ast
     for token in tokens:
         match token.kind:
+            # If the token is an opening bracket/brace/paren, add it to the stack and create a new AST node
+            # for its content. Work on that node next.
             case TKind.ang_open | TKind.curl_open | TKind.brack_open | TKind.par_open:
                 parens_stack.append(token.kind)
                 brack_content_ast_node = ASTNode(f"{token.spelling}{BRACK_SPELLING_MAP[token.spelling]}",
@@ -476,18 +503,24 @@ def build_ast(sig: str):
                                                  end=ASTLeaf(BRACK_MAP[token.kind], BRACK_SPELLING_MAP[token.spelling]))
                 current_node.children.append(brack_content_ast_node)
                 current_node = brack_content_ast_node
+            # If the token is a closing bracket/brace/paren, check if it matches the last open bracket on the stack
+            # and pop it. If it does not match, raise an error.
+            # Continue work on the parent node.
             case TKind.ang_close | TKind.curl_close | TKind.brack_close | TKind.par_close:
                 if not parens_stack or BRACK_MAP.inv[token.kind] != parens_stack[-1]:
                     expect_str = parens_stack[-1] if parens_stack else "nothing"
                     raise ValueError(
                             f"Invalid brackets: encountered {token.spelling} when expecting {expect_str} in '{sig}'")
-                parens_stack.pop()
+                parens_stack.pop()  # Remove
                 current_node = current_node.parent
+            # Ignore whitespace
             case TKind.whitespace:
                 continue
+            # For any other token, add it as a child of the current node and continue processing the current node
             case _:
                 current_node.children.append(token)
 
+    # If there are any open brackets remaining on the stack, raise a ValueError indicating unclosed brackets
     if parens_stack:
         raise ValueError(f"Token stream finished but unclosed brackets remain: {parens_stack} in '{sig}'")
 
@@ -495,6 +528,11 @@ def build_ast(sig: str):
 
 
 def tokenize(sig: str) -> List[ASTLeaf]:
+    """
+    Tokenize `sig` according to the ruled defined in`TKind`.
+    :param sig: The signature to tokenize
+    :return: The tokenization, as a list of `ASTLeaf`
+    """
     token_matchers = [t.value for t in TKind]
     tokens = list(re.finditer('|'.join(token_matchers), sig))
 
@@ -513,6 +551,7 @@ def tokenize(sig: str) -> List[ASTLeaf]:
     return tokens
 
 
+# Debug code to troubleshoot errors
 if __name__ == "__main__":
     with open("../cache/cl_objects_7b616c9c48.pkl", "rb") as f:
         print("Loading Clang Objects... ", end='')

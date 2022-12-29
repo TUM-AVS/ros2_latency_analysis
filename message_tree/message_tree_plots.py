@@ -10,8 +10,10 @@ from message_tree.message_tree_structure import E2EBreakdownItem
 
 def e2e_breakdown_type_hist(items: List[E2EBreakdownItem]):
     """
-    Given a list of e2e breakdown instances of the form `("<type>", <duration>)`, plots a histogram for each encountered
-    type.
+    Given a list of e2e breakdown instances of the form `("<type>", <duration>)`, plots a histogram for each encountered type.
+    Be careful not to mix items of different points in the DFG (i.e. do NOT input dataflows here).
+    :param items: The list of items to be turned into a histogram
+    :return: The figure of the plot
     """
     plot_types = ("dds", "idle", "cpu")
     assert all(item.type in plot_types for item in items)
@@ -34,6 +36,12 @@ def e2e_breakdown_type_hist(items: List[E2EBreakdownItem]):
 
 
 def e2e_breakdown_stack(*paths: List[E2EBreakdownItem]):
+    """
+    Plot a timeseries of stacked DDS/Idle/CPU latencies from `paths`.
+    Each path has to be the same length
+    :param paths: The E2E paths to plot
+    :return: The figure of the plot
+    """
     fig: Figure
     ax: Axes
     fig, ax = plt.subplots(num="E2E type breakdown stackplot")
