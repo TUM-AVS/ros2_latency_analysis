@@ -1,0 +1,4 @@
+{% extends "aw_awsim_dds.yml" %}
+{% block environment %}
+  RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+{% endblock %}
