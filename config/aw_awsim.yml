@@ -78,7 +78,7 @@ startup:
     - "timeout 5 tail --pid=$(pgrep -d ' --pid=' -f 'ros|sar') -f /dev/null || pkill -f 'ros|sar'"
     # Fix frequency scaling to 1.5 GHz on ARM or 3.0 GHz on x86
     - "echo userspace | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_governor"
-    - 'echo $([ "$(uname -i)" = x86_64 ] && echo "3000000" || echo "1500000") | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed'
+    - 'echo $([ "$(uname -i)" = x86_64 ] && echo "{% block freq_ghz_x86 %}3000000{% endblock %}" || echo "{% block freq_ghz_arm %}1500000{% endblock %}") | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_setspeed'
 {% block extra_startup %}
 {% endblock %}
 # Runs after the main tasks are finished to restore the environment
