@@ -21,6 +21,13 @@ rootLogger.addHandler(consoleHandler)
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
+###################################
+# Configuration:
+# "hostname": [config/1.yml, config/2.yml]
+#
+# Run this script with the --help option
+# for info on multiple runs etc.
+###################################
 RUNS = {
     "adlink@edgar-sim-dev": [
         "./config/aw_awsim_freq_1.3ghz.yml",
