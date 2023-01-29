@@ -1,0 +1,5 @@
+{% extends "aw_awsim_dds.yml" %}
+{% block environment %}
+  RMW_IMPLEMENTATION: rmw_fastrtps_dynamic_cpp
+  RMW_FASTRTPS_PUBLICATION_MODE: SYNCHRONOUS
+{% endblock %}

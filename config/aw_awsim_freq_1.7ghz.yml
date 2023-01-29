@@ -1,0 +1,2 @@
+{% extends "aw_awsim.yml" %}
+{% block freq_ghz_arm %}1700000{% endblock %}

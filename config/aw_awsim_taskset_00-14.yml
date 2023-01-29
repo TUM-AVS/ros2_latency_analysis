@@ -1,0 +1,2 @@
+{% extends "aw_awsim.yml" %}
+{% block aw_launch_prefix %}taskset -c 0-14{% endblock %}

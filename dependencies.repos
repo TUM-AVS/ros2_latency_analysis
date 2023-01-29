@@ -1,0 +1,17 @@
+repositories:
+  external/autoware_common:
+    type: git
+    url: https://github.com/autowarefoundation/autoware_common.git
+    version: 5944d420a01d81504f15dfd5323fa68a8d372208
+  external/autoware_msgs:
+    type: git
+    url: https://github.com/autowarefoundation/autoware_msgs.git
+    version: 6f1ddb19825a972820dd3d177c50061658eefbd0
+  external/autoware_auto_msgs: # TODO(mfc): Remove when autoware_msgs is merged
+    type: git
+    url: https://github.com/tier4/autoware_auto_msgs.git
+    version: bd162589a837a2c1ecea943f80c035109e1ae594
+  external/tier4_autoware_msgs:
+    type: git
+    url: https://github.com/tier4/tier4_autoware_msgs.git
+    version: b4ab4360d875c473e4540f47a0e19ea0d146c44d

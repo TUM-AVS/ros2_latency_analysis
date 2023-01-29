@@ -1,0 +1,11 @@
+{% extends "aw_awsim_sched.yml" %}
+{% block chrt_params %}--rr{% endblock %}
+{% block extra_startup %}
+    # Set Round Robin timeslice in milliseconds (0 resets value to system default)
+    # See https://man7.org/linux/man-pages/man2/sched_rr_get_interval.2.html (NOTES -> Linux Notes) for details
+    - "echo {% block rr_timeslice_ms %}0{% endblock %} | sudo tee /proc/sys/kernel/sched_rr_timeslice_ms"
+{% endblock %}
+{% block extra_cleanup %}
+    # Reset Round Robin timeslice to system default
+    - "echo 0 | sudo tee /proc/sys/kernel/sched_rr_timeslice_ms"
+{% endblock %}

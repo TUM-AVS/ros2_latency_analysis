@@ -1,0 +1,2 @@
+{% extends "aw_awsim.yml" %}
+{% block aw_launch_prefix %}(until stat ~/Max_MA/scenario_runner/ready_to_engage > /dev/null; do sleep 1; done; echo 'Engage command received, setting timer frequencies'; ros2 param set /localization/pose_twist_fusion_filter/ekf_localizer predict_frequency {% block ekf_hz %}50.0{% endblock %}; ros2 param set /planning/scenario_planning/lane_driving/behavior_planning/behavior_path_planner planning_hz {% block plan_hz %}10.0{% endblock %}) & taskset -c 0-15{% endblock %}

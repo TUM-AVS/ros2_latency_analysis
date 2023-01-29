@@ -1,0 +1,17 @@
+{% extends "aw_awsim.yml" %}
+{% block extra_tasks %}
+  messages:
+    commands:
+      - "cd ~/Max_MA/autoware"
+      - "source install/setup.bash"
+      - "cd ~/Max_MA/ros2multitopic"
+      - "source install/setup.bash"
+      - "rm -f messages.h5"
+      # The list of topics is hardcoded for performance and repeatability reasons.
+      # Obtained by "ros2 topic list" while Autoware is driving
+      - "ros2 multitopic bw -o messages.h5 $(cat ../scenario_runner/topics.list | tr '\\n' ' ' | sed 's/ $//')"
+    artifact_location: "~/Max_MA/ros2multitopic/messages.h5"
+    start_deps:
+      - collect_sysinfo
+      - tracing
+{% endblock %}

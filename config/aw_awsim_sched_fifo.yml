@@ -1,0 +1,2 @@
+{% extends "aw_awsim_sched.yml" %}
+{% block chrt_params %}--fifo{% endblock %}

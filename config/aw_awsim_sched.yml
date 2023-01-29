@@ -1,0 +1,3 @@
+{% extends "aw_awsim.yml" %}
+{# Wait for the goal pose being published by aw_orchestrator (= Autoware is fully done initializing). Then, find all child process IDs of the shell (all Autoware processes + some runner processes), then set their scheduler one by one. #}
+{% block aw_launch_prefix %}(until stat ~/Max_MA/scenario_runner/ready_to_engage; do sleep 1; done; echo 'Engage command received, setting scheduler'; pstree -pT $$ | grep -Eo '\\([0-9]+\\)' | grep -Eo '[0-9]+' | xargs -n1 chrt {% block chrt_params %}{% endblock %} --pid 1) & taskset -c 0-14{% endblock %}

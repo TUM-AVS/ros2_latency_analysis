@@ -1,0 +1,12 @@
+{% extends "aw_awsim_taskset_00-15.yml" %}
+{% block extra_tasks %}
+  # Starts ROS tracing
+  rosbag:
+    commands:
+      - "cd ~/Max_MA/autoware"
+      - "source install/setup.bash"
+      - "cd ~/Max_MA/scenario_runner"
+      - "ros2 bag play --read-ahead-queue-size 50000000 awsim_replay"
+    start_deps:
+      - collect_sysinfo
+{% endblock %}
