@@ -15,7 +15,7 @@ For data acquisition / simulation runs, up to three hosts can be utilized.
 For all those hosts, the setup is as follows:
 
 ```bash
-    git clone -b runner-framework https://github.com/TUM-AVS/ros2_latency_analysis runner_framework
+    git clone -b runner-framework https://github.com/TUM-AVS/ros2_latency_analysis.git runner_framework
     cd runner_framework
     ./setup.bash
 ```
@@ -27,7 +27,7 @@ but the machine can differ.
 The setup is as follows:
 
 ```bash
-    git clone -b code-analysis https://github.com/TUM-AVS/ros2_latency_analysis code_analysis
+    git clone -b code-analysis https://github.com/TUM-AVS/ros2_latency_analysis.git code_analysis
     cd code_analysis
 ```
 
@@ -39,7 +39,7 @@ Dataflow analysis has to be done with the same ROS 2 version as the above steps 
 The setup is as follows:
 
 ```bash
-    git clone -b dataflow-analysis https://github.com/TUM-AVS/ros2_latency_analysis dataflow_analysis
+    git clone -b dataflow-analysis https://github.com/TUM-AVS/ros2_latency_analysis.git dataflow_analysis
     cd dataflow_analysis
 ```
 
