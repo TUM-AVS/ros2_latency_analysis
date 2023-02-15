@@ -12,9 +12,6 @@ echo "- awsim_ver......: ${awsim_ver}"
 echo "- map_ver........: ${map_ver}"
 echo "- rootdir........: ${rootdir}"
 
-# Ensure project is in the correct location
-test "$(realpath $rootdir)" = "$(realpath /home/$USER/Max_MA)" || (echo "The root directory (currently $rootdir) has to be /home/$USER/Max_MA" && exit 1)
-
 # Install APT packages
 sudo apt-get install screen
 sudo apt-get install lttng-tools lttng-modules-dkms liblttng-ust-dev
@@ -83,14 +80,6 @@ cd $rootdir
 
 sudo swapoff ./"$swap_filename"
 sudo rm ./"$swap_filename"
-
-# Set up ROS2 Multitopic
-echo "Setting up ROS2 Multitopic"
-cd ros2multitopic
-pip3 install -r requirements.txt
-colcon build --symlink-install
-stat install/setup.bash > /dev/null
-cd $rootdir
 
 # Set up scenario runner
 echo "Setting up Autoware Scenatrio Runner"

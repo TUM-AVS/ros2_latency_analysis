@@ -1,20 +1,22 @@
 # Self Contained Experimental Setup
 
-This repository serves as a container for the whole experimental setup needed to reproduce the results of the Thesis.
+This repository serves as a container for the whole experimental setup needed to reproduce the results of the paper.
+
+Prerequisites:
+* Ubuntu 20.04
+* ROS 2 Galactic
+
 Specifically, the setup includes:
 * [Autoware Core/Universe](https://github.com/autowarefoundation/autoware)
 * [ROS2 Tracing](https://github.com/ros2/ros2_tracing)
-* [ROS2 Multitopic](https://gitlab.lrz.de/schmeller/ros2multitopic)
-* [Autoware Scenario Runner](https://gitlab.lrz.de/schmeller/ma-autoware-scenario-runner)
-* [AWSIM (modified to exclude traffic, stoplights and pedestrians)](https://github.com/mojomex/AWSIM)
+* [Autoware Scenario Runner](https://github.com/TUM-AVS/ros2_latency_analysis/tree/scenario-runner)   
+* [AWSIM (modified to exclude traffic, stoplights and pedestrians)](https://github.com/TUM-AVS/ros2_latency_analysis/tree/awsim)
 * [Nishi-Shinjuku map files](https://github.com/tier4/AWSIM/releases/download/v1.0.0/nishishinjuku_autoware_map.zip)
 
 ## Setup
 
-**It is necessary to clone this repo into your home directory and to change its name to `Max_MA`!**
 ```bash
-cd ~
-git clone https://gitlab.lrz.de/schmeller/ma-experiment-workspace.git Max_MA
-cd Max_MA
+git clone -b runner-framework https://github.com/TUM-AVS/ros2_latency_analysis.git runner_framework
+cd runner_framework
 ./setup.bash
 ```

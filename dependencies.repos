@@ -5,9 +5,6 @@ repositories:
     version: 96f9d8d49c57e7d44b6e1c145dc04e87516e2bbb
   scenario_runner:
     type: git
-    url: https://gitlab.lrz.de/schmeller/ma-autoware-scenario-runner.git
-    version: distributed
-  ros2multitopic:
-    type: git
-    url: https://gitlab.lrz.de/schmeller/ros2multitopic.git
-    version: main
+    url: https://github.com/TUM-AVS/ros2_latency_analysis.git
+    version: scenario-runner
+
