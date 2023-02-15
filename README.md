@@ -4,11 +4,8 @@ Run Autoware scenarios reproducibly.
 
 ## Installation
 
-```shell
-git clone https://gitlab.lrz.de/schmeller/ma-autoware-scenario-runner.git
-cd ma-autoware-scenario-runner
-pip install -r requirements.txt
-```
+Do not set up manually.
+Use the `setup.bash` script in the `runner-framework` branch instead.
 
 ## Usage
 
