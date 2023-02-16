@@ -1,3 +1,0 @@
-{% extends "aw_awsim_var_timers.yml" %}
-{% block ekf_hz %}140.0{% endblock %}
-{% block plan_hz %}140.0{% endblock %}

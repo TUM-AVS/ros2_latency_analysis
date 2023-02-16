@@ -11,24 +11,26 @@
 aw_hostname=$SC_AW_HOSTNAME
 aw_username=$SC_AW_USERNAME
 
-sim_hostname=${SC_SIM_HOSTNAME:-sim-SYS-7049GP-TRT}
-sim_username=${SC_SIM_USERNAME:-sim}
+sim_hostname=$SC_SIM_HOSTNAME
+sim_username=$SC_SIM_USERNAME
 
 # Will be generated if not present
-ssh_id=${SC_SSH_ID:-~/.ssh/id_max_ma}
+ssh_id=${SC_SSH_ID:-~/.ssh/id_scenario_runner}
 
 cfg_path=$SC_CFG_PATH
 
-#################################################
-# Properties based on config
-#################################################
-
 # Has to be an absolute path with no environment variables etc. other than $sim_username
-sim_rootdir=/home/$sim_username/Max_MA
+sim_rootdir=$SC_FRAMEWORK_ROOT
 # Has to be an absolute path with no environment variables etc. other than $aw_username
-aw_rootdir=/home/$aw_username/Max_MA
-# Local path to the SSH ID file (without .pub) to be used for remote access to the workers
+aw_rootdir=$SC_FRAMEWORK_ROOT
 
+
+if [ -z "$ROS_DOMAIN_ID" ]
+then
+    echo "ROS_DOMAIN_ID is not set. This is not supported for reliability reasons."
+    echo "Run 'export ROS_DOMAIN_ID=XX' with XX being a random number < 100."
+    exit 1
+fi
 
 #################################################
 # Interactive First-Time Setup 
@@ -54,14 +56,14 @@ scen=$(basename "$cfg_path" .yml)
 pids=()
 (
     ssh -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "rm -f ${sim_rootdir}/scenario_runner/worker.log"
-    ssh -tt -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator timeout -k20 280 ${sim_rootdir}/scenario_runner/worker.bash sim $cfg_path" > /dev/null
+    ssh -tt -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "screen -L -Logfile ${sim_rootdir}/scenario_runner/worker.log -S sim_orchestrator timeout -k20 280 ${sim_rootdir}/scenario_runner/worker.bash sim $cfg_path $ROS_DOMAIN_ID" > /dev/null
     ssh -i "$ssh_id" "${sim_username}"@"${sim_hostname}" "pkill --signal SIGKILL -f 'AWSIM|sim_orchestrator'"
 ) &
 pids+=($!)
 echo "[LAUNCHER] Launched sim worker on ${sim_username}@${sim_hostname}"
 (
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "rm -f ${aw_rootdir}/scenario_runner/worker.log"
-    ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator timeout -k20 280 ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path"
+    ssh -tt -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "screen -L -Logfile ${aw_rootdir}/scenario_runner/worker.log -S aw_orchestrator timeout -k20 280 ${aw_rootdir}/scenario_runner/worker.bash aw $cfg_path $ROS_DOMAIN_ID"
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "pkill --signal SIGKILL -f 'ros|http.server|aw_orchestrator'"
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "lttng destroy max-ma-trace"
     ssh -i "$ssh_id" "${aw_username}"@"${aw_hostname}" "rm -f ${aw_rootdir}/scenario_runner/artifacts.zip"
@@ -74,7 +76,6 @@ if [ "$1" = "rviz" ]
 then
     echo "[LAUNCHER] Launching RVIZ"
     source ../autoware/install/setup.bash &&
-    export ROS_DOMAIN_ID=69 &&
     rviz2 -d ../autoware/install/autoware_launch/share/autoware_launch/rviz/autoware.rviz -s ../autoware/install/autoware_launch/share/autoware_launch/rviz/image/autoware.png > /dev/null &
 fi
 

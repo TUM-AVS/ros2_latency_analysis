@@ -49,7 +49,7 @@ To run the program across multiple PCs, with one Management (M) machine, AWSIM (
 ```shell
 ./launch.bash
 ```
-With the environment variables mentioned in that file changed to the correct hosts.
+With the environment variables mentioned in that file changed to the correct hosts/paths.
 This might require you to enter the hosts' passwords the first time.
 This repository has to be installed and up-to-date as described above on all hosts.
 The artifacts from (A) will be zipped and copied to (M).
