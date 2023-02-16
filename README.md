@@ -18,5 +18,5 @@ Specifically, the setup includes:
 ```bash
 git clone -b runner-framework https://github.com/TUM-AVS/ros2_latency_analysis.git runner_framework
 cd runner_framework
-./setup.bash
+./setup.bash [--sim] [--aw]
 ```

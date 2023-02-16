@@ -1,0 +1,5 @@
+repositories:
+  scenario_runner:
+    type: git
+    url: https://github.com/TUM-AVS/ros2_latency_analysis.git
+    version: scenario-runner

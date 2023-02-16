@@ -1,0 +1,5 @@
+repositories:
+  autoware:
+    type: git
+    url: https://github.com/autowarefoundation/autoware.git
+    version: 96f9d8d49c57e7d44b6e1c145dc04e87516e2bbb
