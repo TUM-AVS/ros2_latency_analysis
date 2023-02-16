@@ -20,3 +20,6 @@ git clone -b runner-framework https://github.com/TUM-AVS/ros2_latency_analysis.g
 cd runner_framework
 ./setup.bash [--sim] [--aw]
 ```
+
+If neither `--sim` nor `--aw` is given (to install AWSIM and/or Autoware respectively), everything is installed.
+The scenario runner is always installed. ros2_tracing is only installed with Autoware, the map only with AWSIM.
