@@ -1,7 +1,7 @@
 # ROS 2 Data Flow Analysis
 
 This repository contains tools to
-1. execute ROS 2 programs repeatably with tracing and resource usage trackig
+1. execute ROS 2 programs repeatably with tracing and resource usage tracking
 2. extract ROS 2 node-internal data dependencies from C++ source code
 3. analyze end-to-end latencies and their breakdowns, given data from 1. and 2.
 
