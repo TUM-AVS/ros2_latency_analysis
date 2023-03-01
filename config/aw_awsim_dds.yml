@@ -3,9 +3,9 @@
   # Starts ROS tracing
   rosbag:
     commands:
-      - "cd ~/Max_MA/autoware"
+      - "cd $RUNNER_DIR/autoware"
       - "source install/setup.bash"
-      - "cd ~/Max_MA/scenario_runner"
+      - "cd $RUNNER_DIR/scenario_runner"
       - "ros2 bag play --read-ahead-queue-size 50000000 awsim_replay"
     start_deps:
       - collect_sysinfo

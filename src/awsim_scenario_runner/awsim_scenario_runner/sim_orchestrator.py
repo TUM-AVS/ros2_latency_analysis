@@ -14,7 +14,7 @@ class SimOrchestrator(Node):
         self.launch_sim()
 
     def launch_sim(self):
-        self.sim_proc = subprocess.Popen([f"/home/{os.environ['USER']}/Max_MA/AWSIM/AWSIM.headless.x86_64"])
+        self.sim_proc = subprocess.Popen([f"{os.environ['RUNNER_DIR']}/AWSIM/AWSIM.headless.x86_64"])
 
     def shutdown_callback(self, _):
         self.get_logger().info(f"[Orchestrator] Shutting down")
