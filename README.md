@@ -59,6 +59,13 @@ The notebook also supports invocation via [Papermill](https://papermill.readthed
 The output files are found in the configured output dir (default: `out/`). 
 Inputs are processed and cached in `cache/`.
 
+## Outputs
+
+The `plot_e2es_violin_XYZ.csv` files correspond to the latencies for each recorded dataflow on path item XYZ.
+The labels for these path items are found in `plot_e2es_violin_labels.csv`.
+The latency types (DDS, Idle, Computation) for these path items are found in `plot_e2es_violin_types.csv`.
+`calc_times.csv` provides calculation times for all callbacks on the path (not only until publication, which is the case for the computation times above).
+
 
 ## Known Issues
 
