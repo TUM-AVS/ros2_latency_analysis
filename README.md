@@ -9,6 +9,25 @@ Use the `setup.bash` script in the `runner-framework` branch instead.
 
 ## Usage
 
+## Distributed
+
+To run the program across multiple PCs, with one Management (M) machine, AWSIM (S) and Autoware (A) machine, do this on the (M) machine:
+
+```shell
+./launch.bash
+```
+With the environment variables mentioned in that file changed to the correct hosts/paths.
+On first execution, the script might require you to enter the hosts' passwords for SSH key generation.
+This repository has to be installed and up-to-date as described above on all hosts.
+The artifacts from (A) will be zipped and copied to (M).
+
+Use 
+```shell
+./batch_measure.py
+```
+on (M) to measure each scenario multiple times, and to measure multiple scenarios after another.
+Follow the instructions in that file for this.
+
 ### Non-distributed
 ```shell
 ./scenario_runner.py [-c path/to/config.yml] ROS_DOMAIN_ID:=<num> [ENV_VAR_1:=val1 [ENV_VAR_2:=val2]]
@@ -42,24 +61,6 @@ This folder will contain:
 * Recorded perf data
 * Autoware logs
 
-## Distributed
-
-To run the program across multiple PCs, with one Management (M) machine, AWSIM (S) and Autoware (A) machine, do this on the (M) machine:
-
-```shell
-./launch.bash
-```
-With the environment variables mentioned in that file changed to the correct hosts/paths.
-This might require you to enter the hosts' passwords the first time.
-This repository has to be installed and up-to-date as described above on all hosts.
-The artifacts from (A) will be zipped and copied to (M).
-
-Use 
-```shell
-./batch_measure.py
-```
-on (M) to measure each scenario multiple times, and to measure multiple scenarios after another.
-Follow the instructions in that file for this.
 ## Configuration Format
 
 ```yaml
