@@ -58,3 +58,8 @@ The notebook also supports invocation via [Papermill](https://papermill.readthed
 
 The output files are found in the configured output dir (default: `out/`). 
 Inputs are processed and cached in `cache/`.
+
+
+## Known Issues
+
+* The histograms output in the notebook for Idle, Computation and DDS times, do not aggregate these values over the end-to-end path. Thus, the latencies of all path elements are added into the same histogram.
