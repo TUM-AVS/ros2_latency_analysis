@@ -63,6 +63,9 @@ Follow the instructions in that file for this.
 ## Configuration Format
 
 ```yaml
+# Environment variables set for all tasks
+environment:
+  VAR_1: "value 1"
 # A list of tasks to be started
 tasks:
   # Special task names like autoware or rosbag behave differently (they have to print console outputs before they are considered running)
