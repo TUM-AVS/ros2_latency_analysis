@@ -83,7 +83,7 @@ then
     echo "Downloading and unpacking AWSIM"
     awsim_zip_name="AWSIM_${awsim_ver}.zip"
     rm -f $awsim_zip_name
-    wget "https://github.com/mojomex/AWSIM/releases/download/v1.0.1_custom/${awsim_zip_name}"
+    wget "https://github.com/TUM-AVS/ros2_latency_analysis/releases/download/v1.0.1_custom/${awsim_zip_name}"
     rm -rf AWSIM
     mkdir AWSIM
     unzip -d AWSIM $awsim_zip_name
